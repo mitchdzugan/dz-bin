@@ -1,0 +1,221 @@
+///*///////////////////////////////////////////////////////////////////*/
+///* WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING //*/
+///* IF THIS FILE'S *NOT* `zwaybar.styles.css` IT IS AUOTOGENERATED  //*/
+///* EDIT `~/.local/bin/zwaybar.styles.css` INSTEAD                  //*/
+///*///////////////////////////////////////////////////////////////////*/
+
+@use 'sass:color';
+
+@function bg_gradient($hl) {
+  @return linear-gradient(
+    180deg,
+    $hl 0%,
+    color.adjust($hl, $whiteness: 7%) 50%,
+    color.adjust($hl, $whiteness: 14%, $alpha: .05) 100%
+  );
+}
+
+$bg-color:            rgba(0  , 0  , 0  , 0.70);
+$bg-dark-color:       rgba(0  , 0  , 0  , 0.85);
+$bg-warning-color:    rgba(65 , 65 , 0  , 0.70);
+$bg-critical-color:   rgba(130, 0  , 0  , 0.70);
+
+$bg:          bg_gradient($bg-color         );
+$bg-dark:     bg_gradient($bg-dark-color    );
+$bg-warning:  bg_gradient($bg-warning-color );
+$bg-critical: bg_gradient($bg-critical-color);
+
+$hl-grey-dim:         rgba(129, 129, 129, 0.60);
+$hl-grey-bright:      rgba(129, 129, 129, 1.00);
+$hl-red-dim:          rgba(201, 93 , 93 , 0.60);
+$hl-red-bright:       rgba(201, 93 , 93 , 1.00);
+$hl-yellow-dim:       rgba(201, 201, 93 , 0.60);
+$hl-yellow-bright:    rgba(201, 201, 93 , 1.00);
+$hl-green-dim:        rgba(93 , 201, 93 , 0.60);
+$hl-green-bright:     rgba(93 , 201, 93 , 1.00);
+$hl-blue-dim:         rgba(93 , 93 , 201, 0.60);
+$hl-blue-bright:      rgba(93 , 93 , 201, 1.00);
+$text:                rgba(199, 199, 199, 1.00);
+$border: 1px solid rgba(0, 0, 0, 0.90);
+
+@function top_shadow($hl: $hl-grey-dim) {
+  @return inset 0 2px $hl;
+}
+
+@function behind_shadow($offset-x: -1) {
+  @return ($offset-x * 1px) 2px 2px rgba(0, 5, 35, 0.6);
+}
+
+@function widget_shadows($offset-x: -1, $hl: $hl-grey-dim) {
+  @return top_shadow($hl), behind_shadow($offset-x);
+}
+
+* {
+  /* `otf-font-awesome` is required to be installed for icons */
+  font-family: "Serious Sans Nerd Font Mono";
+  font-size: 14px;
+  font-weight: normal;
+  min-height: 0;
+}
+
+window#waybar {
+  background: transparent;
+  color: $text;
+}
+
+window#waybar.hidden {
+  opacity: 0.2;
+}
+
+button {
+  box-shadow: inset 0 -3px transparent;
+  border: none;
+  border-radius: 0;
+}
+
+#workspaces {
+  padding: 0;
+}
+
+#workspaces button {
+  padding: 0 4px;
+  border-top: 2px solid $hl-grey-dim;
+  border-right: $border;
+  color: $text;
+}
+
+#workspaces button:last-child {
+  border-radius: 0 4px 0 0;
+  border-right: 0px;
+}
+
+#workspaces button.active {
+  background: $bg-dark;
+  border-top: 2px solid $hl-green-dim;
+}
+
+#workspaces button:hover {
+  background: $bg-dark;
+  border-top: 2px solid $hl-green-bright;
+}
+
+#mode {
+  background-color: #64727D;
+  border-bottom: 3px solid #ffffff;
+}
+
+$containers: modules-left, modules-center, modules-right;
+@each $container in $containers {
+  .#{$container} > widget > * {
+    margin: 0;
+    padding: 3px 12px 0 12px;
+    background: $bg;
+    border-radius: 0;
+    border: $border;
+    border-right: 0;
+    box-shadow: top_shadow();
+  }
+}
+
+#cava, #custom-cerv {
+  padding: 3px 6px 0px 6px;
+  border-radius: 0;
+  border-right: 0;
+  background: $bg;
+  box-shadow: top_shadow();
+  font-size: 17px;
+  // margin-top: -3px;
+  margin-bottom: -2px;
+}
+
+#custom-cerv.on {
+  box-shadow: top_shadow($hl-green-dim);
+}
+#custom-cerv.stopped {
+  box-shadow: top_shadow($hl-red-dim);
+}
+#custom-cerv.started {
+  box-shadow: top_shadow($hl-yellow-dim);
+}
+
+$cervChildren: nth-child(4), last-child;
+@each $child in $cervChildren {
+  #waybar .modules-center > widget:#{$child} > #custom-cerv {
+    padding: 3px 6px 0 6px;
+    font-size: 14px;
+    margin-bottom: 0;
+  }
+}
+
+#waybar .modules-center > widget:first-child  > #pulseaudio,
+#waybar .modules-center > widget:nth-child(4) > #custom-cerv {
+  margin-left: 8px;
+  margin-right: 0;
+  border-right: 0;
+  border-radius: 4px 0 0 0;
+  box-shadow: widget_shadows(-1);
+}
+
+#waybar .modules-center > widget:nth-child(3) > #mpd,
+#waybar .modules-center > widget:last-child   > #custom-cerv {
+  margin-left: 0;
+  margin-right: 8px;
+  border-radius: 0 4px 0 0;
+  border-right: $border;
+  box-shadow: widget_shadows(+1);
+}
+
+#waybar .modules-left > widget:last-child > * {
+  border-radius: 0 4px 0 0;
+  border-right: $border;
+  margin-right: 8px;
+  box-shadow: behind_shadow(+1);
+}
+
+#waybar .modules-right > widget:first-child > * {
+  border-radius: 4px 0 0 0;
+  margin-left: 8px;
+  box-shadow: widget_shadows(-1);
+}
+
+
+@keyframes blink {
+  to {
+    background: $bg;
+  }
+}
+
+#custom-battery.warning:not(.charging) {
+  background: $bg-warning;
+  animation-name: blink;
+  animation-duration: 1.5s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+#custom-battery.critical:not(.charging) {
+  background: $bg-critical;
+  animation-name: blink;
+  animation-duration: 0.75s;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-direction: alternate;
+}
+
+label:focus {
+  background-color: #000000;
+}
+
+#network.disconnected {
+  box-shadow: top_shadow($hl-red-dim);
+}
+
+#tray > .passive {
+  -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+  -gtk-icon-effect: highlight;
+  background-color: #eb4d4b;
+}

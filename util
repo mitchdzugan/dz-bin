@@ -1,0 +1,38 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/modifyByPercent
+
+function volumeGetCurr() {
+    amixer get Master | grep -Po "[0-9]+(?=%)" | tail -1
+}
+
+function volumeSetNext() {
+    echo "amixer -D pulse sset Master unmute $1%,$1%"
+    amixer -D pulse sset Master unmute $1%,$1%
+}
+
+function paVolumeChanged() {
+    paplay $dirname/resources/shine.quiet.wav --volume=$(( $1 * 65536 / 100 )) &
+}
+
+function modifyVolume() {
+    modifyByPercent "volumeGetCurr" "volumeSetNext" "" "paVolumeChanged" $@
+}
+
+function brightnessGetCurr() {
+    now=$(brightnessctl -d intel_backlight g)
+    max=$(brightnessctl -d intel_backlight m)
+    echo "100 * $now / $max" | bc -l
+}
+
+function brightnessSetNext() {
+    brightnessctl -d intel_backlight s $1%
+}
+
+function modifyBrightness() {
+    # svg="/usr/share/pixmaps/tvolnoti/display-brightness-dark.svg"
+    svg="/home/mitch/.config/tvolnoti/themes/dark/display_brightness.svg"
+    notiArgs="-s $svg"
+    modifyByPercent "brightnessGetCurr" "brightnessSetNext" "$notiArgs" ":" $@
+}

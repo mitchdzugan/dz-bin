@@ -1,0 +1,33 @@
+#!/usr/bin/env node
+
+const { exec } = require('child_process');
+
+exec('~/.local/bin/cerv json', (err, output, b) => {
+    if (err) {
+	    console.log(err);
+	    console.log(output);
+	    console.log(b);
+        console.log('cerv error');
+        return;
+    }
+    const services = output.split('\n')
+          .filter(s => s.startsWith('{'))
+          .map(s => JSON.parse(s));
+    let s = "";
+    for (const { service, isEnabled, isAlive } of services) {
+        const color = {
+            [true]: {
+                [true]: '#00DD00',
+                [false]: '#DDDD00',
+            },
+            [false]: {
+                [true]: '#DD0000',
+                [false]: '#888888',
+            }
+        }[Boolean(isAlive)][Boolean(isEnabled)];
+        s += ` %{F#777777}| %{F${color}}${service}`;
+    }
+    const full = `%{F#00DDDD}cerv [ ${s.substring(14)} %{F#00DDDD}]`;
+    console.log(full);
+    process.exit();
+});

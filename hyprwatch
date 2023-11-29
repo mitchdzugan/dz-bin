@@ -1,0 +1,27 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+handle() {
+    echo $1
+    case $1 in
+        workspace*)
+            $dirname/pushWorkspaceQueue.js ${1:11}
+            ;;
+        activewindowv2*)
+            address="0x${1:16}"
+            activePid=$(hyprctl clients -j | jq \
+                --arg jqAddress $address '.[] | select (.address == $jqAddress ) | .pid')
+            ls -l $dirname/state/temp | awk '{print $9}' | grep . | while read tempPid; do
+                if [ "$tempPid" == "$activePid" ]; then
+                    touch $dirname/state/tempFocused/$tempPid
+                elif [[ $dirname/state/tempFocused/$tempPid -nt $dirname/state/temp/$tempPid ]]; then
+                    rm $dirname/state/temp/$tempPid
+                    hyprctl dispatch movetoworkspacesilent special,pid:$tempPid
+                fi
+            done
+            ;;
+    esac
+}
+
+socat -U - UNIX-CONNECT:/tmp/hypr/$HYPRLAND_INSTANCE_SIGNATURE/.socket2.sock | while read -r line; do handle "$line"; done

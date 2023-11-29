@@ -1,0 +1,47 @@
+#!/bin/bash
+#
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+km $@ title "dz system" \
+  - sub w "window manager" \
+    [ cmd s:tab "move to last workspace" "$dirname/goToLastWorkspace" \
+    - cmd s:F "move to fresh workspace" "$dirname/sendToWorkspace.py -c 0 -f" \
+    $(
+    for i in {1..9}; do
+      echo -\ cmd\ s:$i\ \
+        "[ move to workspace $i ]" "[ hyprctl dispatch movetoworkspace $i ]"
+    done
+    ) \
+    - col \
+    - cmd tab "go to last workspace" "$dirname/goToLastWorkspace" \
+    - cmd f "go to fresh workspace" "$dirname/goToFreshWorkspace" \
+    $(
+    for i in {1..9}; do
+      echo -\ cmd\ $i\ \
+        "[ go to workspace $i ]" "[ hyprctl dispatch workspace $i ]"
+    done
+    ) \
+    - col \
+    - cmd c:c "send all to fresh" "$dirname/sendToWorkspace.py -c 1 -f" \
+    - cmd c:i "send others to fresh" "$dirname/sendToWorkspace.py -c 2 -f" \
+    - cmd c:s "send self to fresh" "$dirname/sendToWorkspace.py -c 0 -f" \
+    - col \
+    - cmd c "send all to hidden" "$dirname/sendToWorkspace.py -c 1" \
+    - cmd i "send others to hidden" "$dirname/sendToWorkspace.py -c 2" \
+    - cmd s "send self to hidden" "$dirname/sendToWorkspace.py -c 0" \
+    ] \
+  - sub m "music &amp; sound" \
+    [ cmd left "previous song" "$dirname/prev.py" \
+    - cmd right "next song" "$dirname/prev.py" \
+    - cmd p "toggle pause" "$dirname/pause.py" \
+    - cmd . "set [nowplaying] playlist" "$dirname/setPlaylist.py" \
+    - cmd comma "add playlist to [nowplaying]" "$dirname/addPlaylist.py" \
+    - cmd slash "jump to [nowplaying] song" "$dirname/findInQueue.py" \
+    - cmd s "shuffle [nowplaying]" "$dirname/shuffle.py" \
+    - col \
+    - cmd up "volume up [5%]" "$dirname/volumeUp" \
+    - cmd down "volume down [5%]" "$dirname/volumeDown" \
+    - cmd m "toggle mute" "$dirname/volumeToggleMute" \
+    ] \
+  - cmd v "open nvim project in kitty" "nvimProject -m k" \
+  - cmd s:V "open nvim project in preferred GUI" "nvimProject -m g"

@@ -1,0 +1,217 @@
+#!/bin/bash
+
+bindir=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $bindir/menu/lib
+
+function show_help() {
+# mode=i[nitial]
+# mode=f[inal]
+# mode=w[hole]
+# mode=c[ontinuation]
+# mode=d[efault]
+    echo "impl help"
+}
+
+verbose=0
+
+autopre="$bindir/menu/init | "
+autopost=" | $bindir/menu/run"
+pre=$autopre
+post=$autopost
+if test ! -t 0; then pre=""; post=""; fi
+
+mode=d
+preview=0
+while getopts "h?vpm:" opt; do
+  case "$opt" in
+    h|\?) show_help; exit 0 ;;
+    v)    verbose=1 ;;
+    m)    mode=$OPTARG ;;
+    p)    preview=1 ;;
+  esac
+done
+
+case $mode in
+    d)             :                ;;
+    i) pre=$autopre; post=""        ;;
+    f) pre="";       post=$autopost ;;
+    w) pre=$autopre; post=$autopost ;;
+    c) pre="";       post=""        ;;
+esac
+
+next_ind=$OPTIND
+argc=$#
+argv=( )
+for i in $(seq $argc); do
+    argv[$i]="${@:$i:1}"
+done
+
+noopcmd="(connect && pass_connection)"
+
+function quote() {
+    if [ $# -le 1 ]; then
+        echo "$@"
+    else
+        echo "\"$@\""
+    fi
+}
+
+
+function is_end_args() {
+    if [ $1 -gt $argc ] || [ "${argv[$1]}" == "-" ] || [ "${argv[$1]}" == "]" ]; then
+        echo "true"
+    else
+        echo "false"
+    fi
+}
+
+function fail_subcmd() {
+    >&2 echo -e $1
+    echo "next_ind_line"
+    echo "-1"
+    exit
+}
+
+function assert_args() {
+    if [ $(( $next_ind + $1 )) -gt $argc ]; then
+        scmd=""
+        for i in $(seq $next_ind $argc); do
+            scmd="$scmd${argv[$i]} "
+        done
+        supplied=$(( $argc - $next_ind ))
+        fail_subcmd "only supplied $supplied of $1 required args.\n  $scmd"
+    fi
+    if [ "$(is_end_args $(($next_ind + $1 + 1)))" == "false" ]; then
+        scmd=""
+        for i in $(seq $next_ind $(($next_ind + $1 + 1))); do
+            scmd="$scmd${argv[$i]} "
+        done
+        fail_subcmd "supplied more than $1 required args.\n  $scmd..."
+    fi
+    echo "next_ind_line"
+    echo $(($next_ind + $1 + 2))
+}
+
+proc_res_to_cmd() { echo "${@:2}"; }
+proc_res_to_next_ind() { echo $1; }
+
+function mk_sub() {
+    key=${argv[$(($next_ind + 1))]}
+    desc=$(quote ${argv[$(($next_ind + 2))]})
+    op=$(quote ${argv[$(($next_ind + 3))]})
+    if [ "$op" != "[" ]; then
+        fail_subcmd "invalid sub command, 3rd arg must be array ( [ cmd1 | cmd2 | ...cmds ])"
+    fi
+    proc_res=$(proc $(( $next_ind + 4 )))
+    next_ind=$(echo $proc_res | awk '{print $1}')
+    subcmd=$(echo $proc_res | awk '{$1="";print $0}')
+    echo cont sub $key \"$desc\" \'$subcmd\'
+    echo "next_ind_line"
+    echo $(( next_ind + 1 ))
+}
+
+function mk_cmd() {
+    assert_args 3
+    key=${argv[$(($next_ind + 1))]}
+    desc=$(quote ${argv[$(($next_ind + 2))]})
+    scmd=$(quote ${argv[$(($next_ind + 3))]})
+    echo cont cmd $key \"$desc\" \"$scmd\"
+}
+
+function mk_show() {
+    assert_args 2
+    k=${argv[$(($next_ind + 1))]}
+    if [ "$k" != "mod" ] && [ "$k" != "key" ]; then
+        fail_subcmd "invalid show key (must be 'mod' or 'key') '$k'"
+    fi
+    v=$(quote ${argv[$(($next_ind + 2))]})
+    echo cont show $k \"$v\"
+}
+
+function mk_col() {
+    assert_args 0
+    echo cont col
+}
+
+function mk_title() {
+    assert_args 1
+    stitle=$(quote ${argv[$(($next_ind + 1))]})
+    echo cont title \"$stitle\"
+}
+
+function mk_sh() {
+    assert_args 1
+    scmd=$(quote ${argv[$(($next_ind + 1))]})
+    echo cont sh \"$scmd\"
+}
+
+function mk_noop() {
+    assert_args 0
+    echo $noopcmd
+}
+
+function proc() {
+    next_ind=${1:-$next_ind}
+    OLD_IFS=$IFS
+    IFS=$'\n'
+
+    mcmd=""
+    function push_exe() {
+        if [ "$mcmd" == "" ]; then
+            mcmd=$@
+        else
+            mcmd="$mcmd | $@"
+        fi
+    }
+
+    was_sub=0
+    while [ $next_ind -le $argc ]; do
+        if [ "${argv[$(( $next_ind - 1 ))]}" == "]" ]; then
+            if [ $was_sub -eq 0 ]; then
+                break;
+            fi
+        fi
+        was_sub=0;
+        if [ $next_ind -lt 0 ]; then
+            exit $(( -1 * $next_ind ))
+        fi
+        next_ind_line=0
+        case ${argv[$next_ind]} in
+            noop) lines=$(mk_noop);;
+            title) lines=$(mk_title);;
+            col) lines=$(mk_col);;
+            cmd) lines=$(mk_cmd);;
+            sh) lines=$(mk_sh);;
+            show) lines=$(mk_show);;
+            sub) lines=$(mk_sub); was_sub=1;;
+            *)
+                >&2 echo "unknown command: ${argv[$next_ind]}"
+                exit 1
+                ;;
+        esac
+        for line in $lines; do
+            if [ $next_ind_line -eq 1 ]; then
+                next_ind=$line
+                next_ind_line=0
+            elif [ $line == "next_ind_line" ]; then
+                next_ind_line=1
+            else
+                push_exe $line
+            fi
+        done
+    done
+    if [[ "$mcmd" == "" ]]; then
+        mcmd=$noopcmd
+    fi
+
+    IFS=$OLD_IFS
+    echo "$next_ind $mcmd"
+}
+
+proc_res=$(proc)
+mcmd=$(proc_res_to_cmd $proc_res)
+if [ $preview -eq 1 ]; then
+    echo "$pre$mcmd$post"
+else
+    eval "$pre$mcmd$post"
+fi

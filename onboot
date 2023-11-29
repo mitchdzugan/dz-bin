@@ -1,0 +1,13 @@
+#!/bin/bash
+
+printf "\nstarting user services"
+cerv init
+
+printf "connecting to git"
+eval `ssh-agent -s`
+ssh-add ~/.ssh/id_ed25519
+cerv slippi-clm start
+
+printf "\ngetting credentials to start admin services"
+sudo cerv boss start
+sudo rmmod pcspkr

@@ -1,0 +1,485 @@
+#!/usr/bin/env node
+
+const portfinder = require('portfinder');
+const { exec, spawn } = require('child_process');
+const http = require("http");
+const clc = require('cli-color');
+const fs = require("fs");
+
+const WHICH_KEY = '/home/mitch/Projects/wlr-which-key/target/debug/wlr-which-key';
+
+const FIN = 42;
+
+const COLOR = {
+  bg: "#1E1E2E",
+  fg: "#CDD6F4",
+  black: "#45475A",
+  red: "#F38BA8",
+  green: "#A6E3A1",
+  yellow: "#F9E2AF",
+  blue: "#89B4FA",
+  magenta: "#F5C2E7",
+  cyan: "#94E2D5",
+  white: "#BAC2DE",
+  bright: {
+    black: "#585B70",
+    get red() { return COLOR.red },
+    get green() { return COLOR.green; },
+    yellow: "#fab388",
+    blue: "#b4befe",
+    magenta: "#cba6f7",
+    cyan: "#74c7ec",
+    white: "#A6ADC8",
+  },
+};
+
+const alpha = (color, a) => `${color}${a}`;
+
+const MOD_SYM = {
+  c: "⌃",
+  a: "⎇",
+  s: "⇧",
+  w: "❖",
+}
+const NUM_SHIFT = {
+  0: "parenright",
+  1: "exclam",
+  2: "at",
+  3: "numbersign",
+  4: "dollar",
+  5: "percent",
+  6: "asciicircum",
+  7: "ampersand",
+  8: "asterisk",
+  9: "parenleft",
+};
+const keyLookup = {
+  "."  : "period",
+  up   : "Up",
+  right: "Right",
+  down : "Down",
+  left : "Left",
+  tab: {
+    _: "Tab",
+    s: "ISO_Left_Tab",
+  }
+};
+
+// Heavy Round Tipped
+const displayLookup = {
+  "."  : ".",
+  up   : "Up",
+  up   : "⬆️",
+  right: "➡️",
+  down : "⬇️",
+  left : "⬅️",
+  tab: "⭾",
+}
+for (const num in NUM_SHIFT) {
+  displayLookup[num] = num;
+  keyLookup[num] = { _: num, s: NUM_SHIFT[num] };
+}
+const getIn = (ref, keyname, modstr) => {
+  const forkey = ref[keyname];
+  if (!forkey) { return forkey; }
+  if ((typeof forkey) === 'string') { return forkey; }
+  return forkey[modstr] || forkey._;
+};
+const unsugar_key = (key => {
+  const split = key.split(":");
+  const [mods, keyname] = split.length === 1 ? ["", key] : split;
+  const used = {};
+  for (const mod of mods) { used[mod] = true; }
+  let modstr = "";
+  for (const mod of "wcas") { modstr += used[mod] ? mod : ""; }
+  return {
+    key        : getIn(keyLookup    , keyname, modstr) || keyname,
+    display_key: getIn(displayLookup, keyname, modstr),
+    display_mod: modstr.split("").map(mod => MOD_SYM[mod]).join(""),
+    mods       : modstr,
+  };
+});
+
+async function read_first_line(stream) {
+  for await (const chunk of stream) {
+    return chunk.toString("utf8");
+  }
+  throw "pipeline error";
+};
+
+const isWord = (s) => !(/\s/g.test(s));
+
+const fill = (obj, keys, asEnum=false) => {
+  let v = 1;
+  keys.forEach((k) => { obj[k] = asEnum ? v : k; v *= 2; });
+};
+
+const TYPE = {};
+const __raw_types__ = ['list', 'show_target', /*'key_sugar',*/ 'word', 'words'];
+fill(TYPE, __raw_types__, true)
+TYPE.any = __raw_types__.reduce((acc, t) => acc | TYPE[t], 0);
+TYPE.str = TYPE.show_target | /*TYPE.key_sugar |*/ TYPE.word | TYPE.words;
+// TYPE.key = TYPE.key_sugar | TYPE.word;
+TYPE.key = TYPE.word;
+
+const __t_cache__ = {};
+const getType = (val) => {
+  if (__t_cache__[val]) { return __t_cache__[val]; }
+  const t = (() => {
+    if (Array.isArray(val)) {
+      return TYPE.list;
+    }
+    if (val === "key" || val === "mod") {
+      return TYPE.show_target;
+    }
+    const valIsWord = isWord(val);
+    const colonCount = val.split(":").length - 1;
+    if (valIsWord && colonCount == 2) {
+      // return TYPE.key_sugar;
+    }
+    return valIsWord ? TYPE.word : TYPE.words;
+  })();
+  __t_cache__[val] = t;
+  return t;
+}
+
+const isType = (val, t) => (getType(val) & t) > 0;
+
+const CMD = {};
+fill(CMD, ['noop', 'sh', 'title', 'col', 'cmd', 'sub', 'show']);
+
+const argTypeData = {
+  [CMD.noop]: [],
+  [CMD.sh]: [TYPE.any],
+  [CMD.title]: [TYPE.any],
+  [CMD.col]: [],
+  [CMD.cmd]: [TYPE.key, TYPE.any, TYPE.any],
+  [CMD.sub]: [TYPE.key, TYPE.any, TYPE.list],
+  [CMD.show]: [TYPE.show_target, TYPE.str],
+};
+
+const run = async (words, doInit, doFin, opts) => {
+  const { logcol=4, preview=false, verbose=false } = opts;
+  const ulog = (...args) => verbose && console.error(
+    '\x1b[3' + logcol + 'm%s\x1b[0m', ...args
+  );
+  let cmds = [];
+  let cmd = [];
+  const push_end = () => {
+    if (cmd != cmds[cmds.length - 1]) {
+      cmds.push(cmd);
+    }
+  }
+  const stack = [];
+  for (const word of words) {
+    if (word === "-") {
+      push_end();
+      cmd = [];
+    } else if (word === "[") {
+      stack.push({ cmd, cmds });
+      push_end();
+      cmd = [];
+      cmds = [];
+    } else if (word === "]") {
+      push_end();
+      const subcmds = cmds;
+      const popped = stack.pop();
+      cmds = popped.cmds;
+      cmd = popped.cmd;
+      cmd.push(subcmds);
+    } else {
+      cmd.push(word);
+    }
+  }
+  push_end();
+
+  ulog({ doFin, doInit, preview, verbose });
+  ulog(JSON.stringify(cmds));
+
+  let state = {
+    connection: {},
+    path: [],
+    config: {
+      font: "Serious Sans Nerd Font Mono 12",
+      background: alpha(COLOR.bg, "77"),
+      color: COLOR.bright.cyan,
+      color_key: COLOR.bright.magenta,
+      color_mod: COLOR.bright.blue,
+      color_sep: COLOR.bright.black,
+      color_and: COLOR.bright.yellow,
+      color_cmd: COLOR.yellow,
+      border: alpha(COLOR.blue, "77"),
+      separator: " : ",
+      title_separator: " / ",
+      border_width: 1,
+      column_spacing: 3,
+      corner_radius: 0,
+      padding: 35,
+      anchor: "center",
+      menu: {
+        items: [],
+        newcols: [],
+      }
+    },
+    get menu() {
+      let menu = state.config.menu;
+      for (const step of state.path) {
+        menu = menu.items[step].var.rec;
+      }
+      return menu;
+    },
+    get nextpos() { return state.menu.items.length; },
+    get pos() { return state.nextpos - 1; },
+    get item() { return state.menu.items[state.pos]; },
+    path_in() { state.path.push(state.pos); },
+    path_out() { state.path.pop(); },
+    push_item(key, raw_desc, var_) {
+      const desc = coerce_str(raw_desc, false);
+      state.menu.items.push({ desc, var: var_ });
+      const keyData = unsugar_key(key);
+      for (const itemKey of Object.keys(keyData)) (
+        keyData[itemKey] && (state.item[itemKey] = keyData[itemKey])
+      )
+    },
+    fin: async () => {
+      if (state.connection.local) {
+        state.connection.close();
+        return JSON.stringify(state.config);
+      } else {
+        return await state.fetch(42);
+      }
+    },
+    fetch: async (body) => {
+      const res = await fetch(`http://localhost:${state.connection.port}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      getText = res.text();
+      if (res.status !== 200) {
+        throw await getText;
+      }
+      return await getText;
+    }
+  };
+
+  const typeCheckArgs = (cmd, args) => {
+    const argTypes = argTypeData[cmd];
+    if (!argTypes) {
+      fail(`invalid command: ${cmd}`);
+    }
+    if (argTypes.length !== args.length) {
+      fail(`invalid arg count: ${cmd} ${args.length} ${argTypes.length}`);
+    }
+  };
+
+  const coerce_str = (val, encodeWords = true) => {
+    if (isType(val, TYPE.list)) {
+      return val.map((sv) => sv.map(coerce_str).join(" ")).join(" | ");
+    } else if (encodeWords && isType(val, TYPE.words)) {
+      return '"' + val.replaceAll("\"", "\\\"") + '"';
+    } else {
+      return val;
+    }
+  }
+
+  const handles = {
+    [CMD.noop]: () => {},
+    [CMD.sh]: (shell_cmd) => new Promise((resolve, reject) => {
+      const full_cmd = (
+        `echo ${state.connection.port} | ${coerce_str(shell_cmd, false)}`
+      );
+      ulog("executing shell command:")
+      ulog("  " + full_cmd)
+      exec(full_cmd, (code, out, err) => {
+        !code ? resolve() : reject({ code, out, err });
+      });
+    }),
+    [CMD.title]: (title) => {
+      state.menu.title = coerce_str(title, false);
+    },
+    [CMD.col]: () => {
+      state.menu.newcols.push(state.pos + 1);
+    },
+    [CMD.cmd]: (key, desc, raw_cmd) => {
+      state.push_item(key, desc, { cmd: coerce_str(raw_cmd, false) });
+    },
+    [CMD.sub]: async (key, desc, subcmds) => {
+      state.push_item(key, desc, { rec: { items: [], newcols: [] } });
+      state.path_in();
+      await handleCmds(subcmds);
+      state.path_out();
+    },
+    [CMD.show]: (show_target, val) => {
+      state.item[`display_${show_target}`] = val;
+    },
+  }
+
+  const handleCmds = async (cmds) => {
+    if (state.connection.local) {
+      for (const [cmd, ...args] of cmds) {
+        typeCheckArgs(cmd, args);
+        await handles[cmd](...args);
+      }
+    } else {
+      try {
+        await state.fetch(cmds);
+      } catch (e) {
+        ulog("error submitting remote commands");
+        ulog("  commands: " + JSON.stringify(cmds));
+        ulog("  error   : " + e.toString());
+        fail();
+      }
+    }
+  };
+
+  if (doInit) {
+    state.connection = await new Promise((resolve, reject) => {
+      portfinder.getPort(function (err, port) {
+        if (err) {
+          fail(err);
+        }
+        const host = 'localhost';
+        const requestListener = function (req, res) {
+          let body = "";
+          req.on('data', (data) => {
+            body += data;
+          })
+          req.on('end', async () => {
+            const data = JSON.parse(body)
+            if (data === FIN) {
+              res.writeHead(200);
+              res.end(JSON.stringify(state.config));
+              state.connection.close();
+            } else {
+              try {
+                await handleCmds(data);
+                res.writeHead(200);
+                res.end("ok");
+              } catch (e) {
+                res.writeHead(400)
+                res.end(e.toString());
+              }
+            }
+          });
+        };
+        const server = http.createServer(requestListener);
+        server.listen(port, host, () => {
+          const timeout = (
+            setTimeout(() => fail(`menu builder timeout...`), 10000)
+          );
+          const close = () => {
+            clearTimeout(timeout);
+            server.close();
+          };
+          fail.terminator = (msg) => { close(); throw msg; };
+          resolve({ port, close, local: true });
+        });
+      });
+    });
+  } else {
+    fail.showHelp = false;
+    try {
+      const input = await read_first_line(process.stdin);
+      const port = parseInt(input, 10);
+      ulog({ port, from: "stdin" })
+      state.connection = { port };
+    } catch (e) {
+      ulog(e);
+      fail();
+    }
+  }
+
+  await handleCmds(cmds);
+
+  if (doFin) {
+    const config_str = await state.fin();
+    ulog("finished config string");
+    ulog(config_str);
+    if (preview) {
+      console.log(config_str);
+      process.exit(1);
+    }
+    const proc = spawn(WHICH_KEY);
+    proc.on('spawn', () => {
+      proc.stdin.write(config_str);
+      proc.stdin.end();
+    });
+    proc.stderr.on('data', (data) => {
+      const s = data.toString("utf8");
+      if (s.length > 0) {
+        console.error(s.substr(0, s.length - 1));
+      }
+    });
+    proc.stdout.on('data', (data) => {
+      const s = data.toString("utf8");
+      if (s.length > 0) {
+        console.log(s.substr(0, s.length - 1));
+      }
+    });
+  } else {
+    ulog("printing the port");
+    console.log(state.connection.port);
+  }
+};
+
+const printHelp = () => {
+  console.error(`
+help dialog...
+    `.trim())
+};
+
+const fail = (msg, code=1) => {
+  msg && console.error(msg);
+  fail.showHelp && printHelp();
+  fail.terminator(msg, code);
+};
+fail.showHelp = true;
+fail.terminator = (msg, code) => { process.exit(code); }
+
+const main = () => {
+  let mode = "d";
+  let verbose = false;
+  let preview = false;
+  const words = [];
+  let pastops = false;
+  let i = 2;
+  let logcol = 4;
+  while (i < process.argv.length) {
+    const arg = process.argv[i];
+    let hasarg = 0;
+    if (pastops) {
+      words.push(arg);
+    } else if (arg.startsWith("-")) {
+      for (const char of arg.substr(1)) {
+        (({
+          h: () => { printHelp(); process.exit(); },
+          v: () => { verbose = true; },
+          p: () => { preview = true; },
+          l: () => { hasarg = 1; logcol = process.argv[i+1]; },
+          m: () => { hasarg = 1; mode = process.argv[i+1]; },
+        })[char] || (() => fail(`invalid option: ${char}`)))();
+      }
+    } else {
+      words.push(arg);
+      pastops = true;
+    }
+    i += 1 + hasarg;
+  }
+  if (!words.length) { words.push('noop'); }
+  const init         = { doInit: true , doFin: false };
+  const final        = { doInit: false, doFin: true  };
+  const whole        = { doInit: true , doFin: true  };
+  const continuation = { doInit: false, doFin: false };
+  const { doInit, doFin } = ({
+    i: () => init,
+    f: () => final,
+    w: () => whole,
+    c: () => continuation,
+    d: () => process.stdin.isTTY ? whole : continuation,
+  }[mode] || (() => fail(`invalid mode: ${mode}`)))();
+  run(words, doInit, doFin, { preview, verbose, logcol })
+    .catch((e) => { console.error(e); process.exit(1); });
+};
+main();

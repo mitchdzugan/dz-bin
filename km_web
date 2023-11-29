@@ -1,0 +1,50 @@
+#!/bin/bash
+#
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+session_id=$1
+url=$2
+
+function ctl() {
+  echo "$dirname/firefoxctrl.py -s $session_id \"$@\""
+}
+
+function ctl_cmd() {
+  echo " [ $(ctl $@) ] "
+}
+
+function mk_stat_mod() {
+  player=$1
+  key=$2
+  class=$3
+  label=${4:-$3}
+  echo sub $key $label \
+    [ cmd up max $(ctl_cmd pokemon_calc_set_evs $player $class 252) \
+    - cmd down min $(ctl_cmd pokemon_calc_set_evs $player $class 0) \
+    ]
+}
+
+function mk_pokemon_mod() {
+  key=$1
+  player=$2
+  echo sub $key [ pokemon $2 ] \
+    [ $(mk_stat_mod $player h hp) \
+    - $(mk_stat_mod $player a at atk) \
+    - $(mk_stat_mod $player d df def) \
+    - col \
+    - $(mk_stat_mod $player s sp speed) \
+    - $(mk_stat_mod $player s:A sa sp.atk) \
+    - $(mk_stat_mod $player s:D sd sp.def) \
+    ]
+}
+
+km -m w title web \
+  - cmd p "full window media" \
+    "hyprctl dispatch fakefullscreen && $(ctl fw)" \
+  - cmd s:P "full window media + detach" \
+    "hyprctl dispatch fakefullscreen && $(ctl composite fw \| tabdetach)" \
+  - sub c "pokemon damage calc" \
+    [ $(mk_pokemon_mod left 1) \
+    - col \
+    - $(mk_pokemon_mod right 2) \
+    ] \

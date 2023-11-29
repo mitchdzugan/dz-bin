@@ -1,0 +1,68 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+function printHelp() {
+  echo -e "Usage:"
+  echo -e "  nvimProject [OPTIONS]"
+  echo -e ""
+  echo -e "Options: "
+  echo -e "  -m MODE\tthe mode to launch nvim. default \`i\`"
+  echo -e "    i: IN PLACE runs nvim in the same shell that spawned \`nvimProject\`"
+  echo -e "    k: KITTY    runs nvim in newly spawned kitty shell"
+  echo -e "    g: GUI      runs preferred gui wrapper for nvim [neovide currently]"
+}
+
+mode=i
+while getopts "m:h" flag > /dev/null 2>&1; do
+  case $flag in
+    m)
+      mode=$OPTARG
+      ;;
+    h)
+      printHelp
+      exit 0
+      ;;
+    \?)
+      optkeyFull=${@:OPTIND-1:1}
+      optkey=${optkeyFull//-/}
+      >&2 echo "ERROR [unknown option: $optkey]"
+      printHelp
+      exit 1
+      ;;
+  esac
+done
+
+function inPlaceLaunch() {
+  pushd $1 && nvim ./ && popd
+}
+
+function kittyLaunch() {
+  kitty sh -c "cd $1 && nvim ./"
+}
+
+function guiLaunch() {
+  pushd $1 && neovide ./ && popd
+}
+
+case $mode in
+  i)
+    launch=inPlaceLaunch
+    ;;
+  k)
+    launch=kittyLaunch
+    ;;
+  g)
+    launch=guiLaunch
+    ;;
+  *)
+    >&2 echo "ERROR [unknown mode: $mode]"
+    printHelp
+    exit 1
+    ;;
+esac
+
+path=$( $dirname/codeProject.py )
+if [ "$path" != "" ]; then
+  $launch $path
+fi

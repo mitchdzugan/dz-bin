@@ -1,0 +1,68 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/util
+
+function sassToCss() {
+  sass --no-source-map $dirname/zwaybar.style.scss
+}
+
+function writeWithGenWarning() {
+  name=$1
+  fullpath=$2
+  open=$3
+  close=$4
+  getRest=$5
+  dest=$6
+  echo "" \
+    | cat   <(echo "$open//////////////////////////////////////////////////////////////////////$close") \
+    | cat - <(echo "$open// WARNING WARNING WARNING WARNING WARNING WARNING WARNING WARNING  //$close") \
+    | cat - <(echo "$open// IF THIS FILE IS *NOT* \`$name\` IT IS AUOTOGENERATED //$close") \
+    | cat - <(echo "$open// EDIT \`$fullpath\` INSTEAD                  //$close") \
+    | cat - <(echo "$open//////////////////////////////////////////////////////////////////////$close") \
+    | cat - <(echo "") \
+    | cat - <(eval $getRest) \
+    > $dest
+}
+
+function buildConfigs() {
+  configDir=~/.config/waybar/
+
+  old_ifs="$IFS"
+  unset IFS
+
+  configs=""
+  modules=""
+  for service in $(~/.local/bin/cerv ls | tail -n1)
+  do
+    echo "SERVICE: $service"
+    configs="$configs,\n\
+      \"custom/cerv#$service\":{\n\
+        \"return-type\": \"json\",\n\
+        \"exec\": \"~/.local/bin/cerv-waybar $service\",\n\
+        \"on-click\": \"kitty sh -c \\\"cerv $service log\\\"\",\n\
+        \"interval\": 5\n\
+      }"
+    modules="$modules, \"custom/cerv#$service\""
+  done
+
+  IFS="$old_ifs"
+
+  config=""
+  while read line; do
+    [[ $config = "" ]] && config=$line || config="$config\n$line"
+  done < $dirname/zwaybar.config
+  config=${config/@@cerv_modules@@/$modules}
+  config=${config/@@cerv_configs@@/$configs}
+  function giveFullConfig() {
+    echo -e $config
+  }
+  name="\`\`zwaybar.config\`\`\`"
+  path="\`\`~/.local/bin/zwaybar.config\`\`\`"
+  writeWithGenWarning $name $path "///" "///" giveFullConfig "$configDir/config"
+
+  rm $configDir/style.css
+  name="zwaybar.styles.scss"
+  path="~/.local/bin/zwaybar.styles.scss"
+  writeWithGenWarning $name $path "/* " " */" sassToCss "$configDir/style.css"
+}

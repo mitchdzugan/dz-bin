@@ -1,0 +1,372 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+### TODO get colors from some provider
+
+BG="#1e1e2e"
+FG="#CDD6F4"
+BLACK="#45475A"
+RED="#F38BA8"
+GREEN="#A6E3A1"
+YELLOW="#F9E2AF"
+BLUE="#89B4FA"
+MAGENTA="#F5C2E7"
+CYAN="#94E2D5"
+WHITE="#BAC2DE"
+BRIGHT_BLACK="#585B70"
+BRIGHT_RED=""
+BRIGHT_GREEN=""
+BRIGHT_YELLOW="#fab388"
+BRIGHT_BLUE="#b4befe"
+BRIGHT_MAGENTA="#cba6f7"
+BRIGHT_CYAN="#74c7ec"
+BRIGHT_WHITE="#A6ADC8"
+
+ALPHA() { printf "%s%s" $1 $2; }
+
+declare -a glob=( invalid invalid )
+get_guid()    { echo ${glob[0]}; }
+get_conn_id() { echo ${glob[1]}; }
+set_guid()    { glob[0]=$1; }
+set_conn_id() { glob[1]=$1; }
+
+mk_guid() { echo "$$_$(($(date +%s%N)/1000000))"; }
+inc_conn_id() { set_conn_id $(( $(get_conn_id) + 1 )); get_conn_id; }
+
+ev_pipe() { echo "/tmp/${1:-$(get_guid)}_event"; }
+in_pipe() { echo "/tmp/${1:-$(get_guid)}_input"; }
+sc_pipe() { echo "/tmp/${1:-$(get_guid)}_subcm"; }
+
+function init() {
+    set_guid $(mk_guid)
+    set_conn_id 1
+    mkfifo $(in_pipe)
+    mkfifo $(ev_pipe)
+    mkfifo $(sc_pipe)
+}
+
+connect() {
+    IFS=$'\n'
+    read line;
+    set_guid $(echo $line | awk '{print $1}')
+    set_conn_id $(echo $line | awk '{print $2}')
+}
+pass_connection() { echo "$(get_guid) $(inc_conn_id)"; }
+
+function cont() {
+    connect
+    conn_id=$(get_conn_id)
+    if [ "$1" == "sub" ] || [ "$1" == "sh" ]; then
+        finish_on "ok $conn_id" $(sc_pipe) &
+    else
+        finish_on "ok $conn_id" &
+    fi
+    is_first=1
+    for arg in "$@"; do
+        s=$arg
+        if [ $is_first -eq 1 ]; then
+            s="$arg $conn_id"
+            is_first=0
+        fi
+        echo "$s" >$(in_pipe)
+    done
+    wait
+}
+
+function wait_on() {
+    pipe=${2:-$(ev_pipe)}
+    waiting=true
+    >&2 echo "waiting on: $1, conn_id $(get_conn_id), pipe: $pipe"
+    while [ "$waiting" == "true" ]; do
+        IFS=$'\n'
+        read line <$pipe
+        if [ "$line" == "$1" ]; then
+            waiting=false;
+        else
+            >&2 echo "DISCARDING: $line ::: $1 :: $pipe"
+            echo $line >$pipe
+        fi
+    done
+}
+
+function finish_on() {
+    wait_on "$1" $2
+    pass_connection
+}
+
+### data helpers
+
+function quote() {
+    if [ $# -le 1 ]; then
+        echo "$@"
+    else
+        echo -e "\"$@\""
+    fi
+}
+
+function decl_arr() {
+    decl_ind=$(( ${decl_counts[arr]} + 1 ))
+    if [ $decl_ind -gt 5 ]; then
+        >&2 echo "out of reserved declaration space..."
+        exit 1
+    fi
+    decl_var="decl_rsrv_arr_$decl_ind"
+    decls[$1]=$decl_var
+    decl_counts[arr]=$decl_ind
+}
+
+function decl_obj() {
+    decl_ind=$(( ${decl_counts[obj]} + 1 ))
+    if [ $decl_ind -gt 5 ]; then
+        >&2 echo "out of reserved declaration space..."
+        exit 1
+    fi
+    decl_var="decl_rsrv_obj_$decl_ind"
+    decls[$1]=$decl_var
+    decl_counts[obj]=$decl_ind
+}
+
+obj_set() { dict=${decls[$1]:-$1}; eval "$dict[$2]=\$3"; }
+obj_get() { dict=${decls[$1]:-$1}; eval "echo \${$dict[$2]}"; }
+arr_count() { arr=${decls[$1]:-$1}; eval "echo \${#${arr}[@]}"; }
+arr_push() { arr=${decls[$1]:-$1}; eval "$arr[$(arr_count $arr)]=$(quote $2)"; }
+arr_pop() { arr=${decls[$1]:-$1}; eval "unset $arr[-1]"; }
+
+### data structure paths
+
+path_key() { eval "echo __path_\${$(path_var)[*]// /,}__"; }
+path_id()  { echo "$(get_guid)_$(path_key)"; }
+pos()   { echo "$(( $(arr_count $(items_var)) - 1 + ${1:-0} ))"; }
+pos_id()   { echo "$(path_id)_$(pos ${1:-0})"; }
+
+menu_var() { echo "menu_$(path_id)"; }
+items_var() { echo "items_$(path_id)"; }
+nextitem_var() { echo "item_$(pos_id 1)"; }
+item_var() { echo "item_$(pos_id 0)"; }
+itemvar_var() { echo "itemvar_$(pos_id 0)"; }
+newcols_var() { echo "newcols_$(path_id)"; }
+path_var() { echo "path_$(get_guid)"; }
+config_var() { echo "config_$(get_guid)"; }
+
+item_set() { obj_set $(item_var) "$1" "$2"; }
+itemvar_set() { obj_set $(itemvar_var) "$1" "$2"; }
+menu_set() { obj_set $(menu_var) "$1" "$2"; }
+config_set() { obj_set $(config_var) "$1" "$2"; }
+config_get() { obj_get $(config_var) "$1"; }
+
+### processing
+
+function prepare_next_item() {
+    item_var=$(nextitem_var)
+    decl_obj $item_var
+    arr_push $(items_var) dz:json:obj:$item_var
+    decl_obj $(itemvar_var)
+    item_set key "$1"
+    item_set desc "$2"
+    item_set var "dz:json:obj:$(itemvar_var)"
+}
+
+function sc_run() {
+    conn_id=$1
+    subcmd=$2
+    out=$(eval "echo $(get_guid) $(( $conn_id + 1 )) | $subcmd")
+    >&2 echo "sending ok $conn_id | $(sc_pipe)"
+    printf "ok $conn_id\n" >>$(sc_pipe)
+}
+
+function process_next() {
+    # >&2 echo -e "PROC  on   IN pipe\t$(date +"%T.%N")"
+    # >&2 echo -e "READ  from IN pipe\t$(date +"%T.%N")"
+    IFS=$'\n'
+    if read -r line <$(in_pipe); then
+        km_cmd=$(echo $line | awk '{print $1}')
+        conn_id=$(echo $line | awk '{print $2}')
+        case $km_cmd in
+            ready)
+                printf "ok\n" >>$(ev_pipe)
+                ;;
+            cmd)
+                read k <$(in_pipe)
+                read desc <$(in_pipe)
+                read scmd <$(in_pipe)
+                prepare_next_item $k $desc
+                itemvar_set cmd "$scmd"
+                >&2 echo "sending ok $conn_id | $(ev_pipe)"
+                printf "ok $conn_id\n" >>$(ev_pipe)
+                ;;
+            sub)
+                read k <$(in_pipe)
+                read desc <$(in_pipe)
+                read subcmd <$(in_pipe)
+                prepare_next_item $k $desc
+                currpos=$(pos)
+                arr_push $(path_var) $currpos
+                itemrec_varname=$(menu_var)
+                items_varname=$(items_var)
+                newcols_varname=$(newcols_var)
+                decl_obj $itemrec_varname
+                decl_arr $items_varname
+                decl_arr $newcols_varname
+                arr_pop $(path_var)
+                itemvar_set rec dz:json:obj:$itemrec_varname
+                arr_push $(path_var) $currpos
+                menu_set items dz:json:arr:$items_varname
+                menu_set newcols dz:json:arr:$newcols_varname
+                >&2 echo "SUBRUNNING: $subcmd"
+                sc_run $conn_id "$subcmd" & disown
+                ;;
+            show)
+                read k <$(in_pipe)
+                read v <$(in_pipe)
+                item_key="display_$k"
+                item_set $item_key "$v"
+                printf "ok $conn_id\n" >>$(ev_pipe)
+                ;;
+            col)
+                arr_push $(newcols_var) $(arr_count $(items_var))
+                printf "ok $conn_id\n" >>$(ev_pipe)
+                ;;
+            title)
+                read title <$(in_pipe)
+                menu_set title $title
+                printf "ok $conn_id\n" >>$(ev_pipe)
+                ;;
+            sh)
+                read scmd <$(in_pipe)
+                sc_run $conn_id "$scmd" & disown
+                ;;
+            run)
+                res=$(to_json "dz:json:obj:$(config_var)")
+                echo $res >$(ev_pipe)
+                exit_loop=true
+                ;;
+        esac
+    fi
+}
+
+### initialize
+
+function init_config() {
+    config_set font "Serious Sans Nerd Font Mono 12"
+    config_set background $(ALPHA $BG "77")
+    config_set color $BRIGHT_CYAN
+    config_set color_key $BRIGHT_MAGENTA
+    config_set color_mod $BRIGHT_BLUE
+    config_set color_sep $BRIGHT_BLACK
+    config_set color_and $BRIGHT_YELLOW
+    config_set color_cmd $YELLOW
+    config_set border $(ALPHA $BLUE "77")
+    config_set separator ' : '
+    config_set title_separator ' / '
+    config_set border_width 1
+    config_set column_spacing 3
+    config_set corner_radius 0
+    config_set padding 35
+    config_set anchor center
+    menu_set items "dz:json:arr:$(items_var)"
+    menu_set newcols "dz:json:arr:$(newcols_var)"
+    config_set menu "dz:json:obj:$(menu_var)"
+}
+
+function input_loop() {
+    # >&2 echo -e "A check INPUT_LOOP\t$(date +"%T.%N")"
+    declare exit_loop=false
+    declare -A decls=()
+    declare -A decl_counts=()
+
+    declare -a decl_rsrv_arr_1
+    declare -a decl_rsrv_arr_2
+    declare -a decl_rsrv_arr_3
+    declare -a decl_rsrv_arr_4
+    declare -a decl_rsrv_arr_5
+
+    declare -A decl_rsrv_obj_1
+    declare -A decl_rsrv_obj_2
+    declare -A decl_rsrv_obj_3
+    declare -A decl_rsrv_obj_4
+    declare -A decl_rsrv_obj_5
+
+    declare -A "$(config_var)"
+    declare -a "$(path_var)"
+    declare -A "$(menu_var)"
+    declare -a "$(items_var)"
+    declare -a "$(newcols_var)"
+
+    # >&2 echo -e "B check INPUT_LOOP\t$(date +"%T.%N")"
+    init_config
+
+    while true; do
+        # >&2 echo -e "C check INPUT_LOOP\t$(date +"%T.%N")"
+        for varname in "${!decls[@]}"; do
+            declname=${decls[$varname]}
+            # >&2 echo "restoring :  $varname"
+            # >&2 echo "from      :  $declname"
+            # >&2 echo ""
+            if [[ "$declname" =~ ^decl_rsrv_obj.* ]]; then
+                declare -A "$varname"
+            else
+                declare -a "$varname"
+            fi
+            eval "for k in \"\${!$declname[@]}\"; do $varname[\$k]=\${$declname[\$k]}; done"
+        done
+        decl_counts[arr]=0
+        decl_counts[obj]=0
+        decls=()
+        # >&2 echo -e "D check INPUT_LOOP\t$(date +"%T.%N")"
+        process_next
+        if [ "$exit_loop" == "true" ]; then
+            break
+        fi
+    done
+}
+
+### json
+
+function to_json_arr() {
+  first=true
+  function print_el() {
+    k=$2
+    v=$(to_json $(eval "echo \${$1[\$k]}"))
+    if [[ "$first" == "true" ]]; then
+      printf '%s' "$v";
+      first=false
+    else
+      printf '\0%s' "$v";
+    fi
+  }
+
+  todo="for key in \"\${!$1[@]}\"; do print_el $1 \$key; done"
+  eval $todo | jq -Rs 'split("\u0000") | map(.|fromjson)'
+}
+
+function to_json_obj() {
+  first=true
+  function print_pair() {
+    k=$2
+    v=$(to_json $(eval "echo \${$1[\$k]}"))
+    if [[ "$first" == "true" ]]; then
+      printf '%s\0%s' "$k" "$v";
+      first=false
+    else
+      printf '\0%s\0%s' "$k" "$v";
+    fi
+  }
+
+  todo="for key in \"\${!$1[@]}\"; do print_pair $1 \$key; done"
+  eval $todo | jq -Rs '
+    split("\u0000")
+    | . as $a
+    | reduce range(0; length/2) as $i
+        ({}; . + {($a[2*$i]): ($a[2*$i + 1]|fromjson? // .)})'
+}
+
+function to_json() {
+    v=$@
+    if [[ "$v" =~ ^dz:json:obj:.* ]]; then
+      v=$(to_json_obj ${v:12})
+    elif [[ "$v" =~ ^dz:json:arr:.* ]]; then
+      v=$(to_json_arr ${v:12})
+    fi
+    echo $v
+}

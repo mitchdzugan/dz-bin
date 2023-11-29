@@ -1,0 +1,30 @@
+#!/usr/bin/env node
+
+const { exec } = require('child_process');
+
+const service = process.argv[2];
+exec(`~/.local/bin/cerv ${service} json`, (err, output, b) => {
+    if (err) {
+	    console.log(err);
+	    console.log(output);
+	    console.log(b);
+        console.log('cerv error');
+        return;
+    }
+    const { pid, isAlive, isEnabled, config: { icon } } = JSON.parse(output)
+    const className = {
+        [true]: {
+            [true]: 'on',
+            [false]: 'started',
+        },
+        [false]: {
+            [true]: 'stopped',
+            [false]: 'off',
+        }
+    }[Boolean(isAlive)][Boolean(isEnabled)];
+    const pidtip = !pid ? 'inactive' : `pid: ${pid}`
+    const tooltip = `${service} [${pidtip}]`
+    const json = { text: icon, class: className, tooltip };
+    console.log(`${JSON.stringify(json)}`);
+    process.exit();
+});

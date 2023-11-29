@@ -1,0 +1,10 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/lib
+
+init
+input_loop & disown
+finish_on 'ok' &
+echo 'ready' >$(in_pipe)
+wait

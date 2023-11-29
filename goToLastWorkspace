@@ -1,0 +1,6 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+last_ws=$( $dirname/getLastWorkspace.js )
+
+hyprctl dispatch workspace $last_ws

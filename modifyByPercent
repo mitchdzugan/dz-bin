@@ -1,0 +1,30 @@
+#!/bin/bash
+
+function round() {
+    printf "%.${2:-0}f" "$1"
+}
+
+function modifyByPercent() {
+    # fn modifyByPercent($getCurr, $setNext, $notiArgs, $isUp, $postscript, $step)
+    getCurr=$1
+    setNext=$2
+    notiArgs=${3:-""}
+    postscript=${4:-":"}
+    isUp=${5:-0}
+    step=${6:-5}
+
+    curr=$(printf "%.*f\n" 0 "$($getCurr)")
+    offset=$(( $curr % 5 ))
+    if [[ $isUp != 0 ]]; then
+        mod=1
+    elif [[ $offset == 0 ]]; then
+        mod=-1
+    else
+        mod=0
+    fi
+    next=$(( (($curr / 5) + $mod) * 5 ))
+    $setNext $next
+    eval "$postscript $next"
+    newr=$(printf "%.*f\n" 0 "$($getCurr)")
+    tvolnoti-show $notiArgs $newr
+}

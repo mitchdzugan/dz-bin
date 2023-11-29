@@ -1,0 +1,8 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/lib
+connect
+echo "run" >$(in_pipe)
+read -r res <$(ev_pipe)
+echo $res

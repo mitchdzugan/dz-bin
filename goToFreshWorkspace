@@ -1,0 +1,6 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+fresh_ws=$( $dirname/getFreshWorkspace.py )
+
+hyprctl dispatch workspace $fresh_ws

@@ -1,0 +1,7 @@
+#!/bin/bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/zwaybarPrepare
+
+buildConfigs
+killall -SIGUSR2 waybar

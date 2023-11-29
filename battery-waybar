@@ -1,0 +1,37 @@
+#!/bin/bash
+
+max=$(cat /sys/class/power_supply/BAT0/charge_full)
+now=$(cat /sys/class/power_supply/BAT0/charge_now)
+curr=$(( 100 * $now / $max ))
+rawStatus=$(cat /sys/class/power_supply/BAT0/status | tr '[:upper:]' '[:lower:]')
+status=${rawStatus// /_}
+
+if [[ $curr -lt 15 ]]; then
+  state="critical"
+  batteryIcon="󰂎"
+elif [[ $curr -lt 30 ]]; then
+  state="warning"
+  batteryIcon="󱊡"
+elif [[ $curr -lt 95 ]]; then
+  state="ok"
+  batteryIcon="󱊢"
+else
+  state="full"
+  batteryIcon="󱊣"
+fi
+
+if [[ $status == "charging" ]]; then
+  chargeIcon="󱐋"
+elif [[ $state == "critical" ]]; then
+  chargeIcon="󰈅"
+elif [[ $status == "discharging" ]]; then
+  chargeIcon="󰍴"
+else
+  chargeIcon="󰚥"
+fi
+
+jq -c -n \
+  --arg text "$chargeIcon $batteryIcon $curr%" \
+  --arg class $state \
+  --arg tooltip "" \
+  '$ARGS.named'

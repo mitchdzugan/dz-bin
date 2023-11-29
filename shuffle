@@ -1,0 +1,5 @@
+#!/bin/bash
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+$dirname/shuffle.py
+$dirname/findInQueue.py
