@@ -62,18 +62,19 @@ const keyLookup = {
   tab: {
     _: "Tab",
     s: "ISO_Left_Tab",
-  }
+  },
+  return: "Return",
 };
 
 // Heavy Round Tipped
 const displayLookup = {
   "."  : ".",
-  up   : "Up",
-  up   : "⬆️",
-  right: "➡️",
-  down : "⬇️",
-  left : "⬅️",
+  up   : "🠝",
+  right: "🠞",
+  down : "🠟",
+  left : "🠜",
   tab: "⭾",
+  return: "⏎"
 }
 for (const num in NUM_SHIFT) {
   displayLookup[num] = num;
@@ -202,7 +203,7 @@ const run = async (words, doInit, doFin, opts) => {
     config: {
       font: "Serious Sans Nerd Font Mono 12",
       background: alpha(COLOR.bg, "77"),
-      color: COLOR.bright.cyan,
+      color: COLOR.white,
       color_key: COLOR.bright.magenta,
       color_mod: COLOR.bright.blue,
       color_sep: COLOR.bright.black,
@@ -210,10 +211,13 @@ const run = async (words, doInit, doFin, opts) => {
       color_cmd: COLOR.yellow,
       border: alpha(COLOR.blue, "77"),
       separator: " : ",
+      // title_background: {
+        // color: "#6e738d"
+      // },
       title_separator: " / ",
       border_width: 1,
       column_spacing: 3,
-      corner_radius: 0,
+      corner_radius: 10,
       padding: 35,
       anchor: "center",
       menu: {

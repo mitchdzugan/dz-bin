@@ -9,15 +9,13 @@ handle() {
             $dirname/pushWorkspaceQueue.js ${1:11}
             ;;
         activewindowv2*)
-            address="0x${1:16}"
-            activePid=$(hyprctl clients -j | jq \
-                --arg jqAddress $address '.[] | select (.address == $jqAddress ) | .pid')
-            ls -l $dirname/state/temp | awk '{print $9}' | grep . | while read tempPid; do
-                if [ "$tempPid" == "$activePid" ]; then
-                    touch $dirname/state/tempFocused/$tempPid
-                elif [[ $dirname/state/tempFocused/$tempPid -nt $dirname/state/temp/$tempPid ]]; then
-                    rm $dirname/state/temp/$tempPid
-                    hyprctl dispatch movetoworkspacesilent special,pid:$tempPid
+            activeAdrs="0x${1:16}"
+            ls -l $dirname/state/temp | awk '{print $9}' | grep . | while read tempAdrs; do
+                if [ "$tempAdrs" == "$activeAdrs" ]; then
+                    touch $dirname/state/tempFocused/$tempAdrs
+                elif [[ $dirname/state/tempFocused/$tempAdrs -nt $dirname/state/temp/$tempAdrs ]]; then
+                    rm $dirname/state/temp/$tempAdrs
+                    hyprctl dispatch movetoworkspacesilent special,address:$tempAdrs
                 fi
             done
             ;;

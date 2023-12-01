@@ -5,4 +5,10 @@
 source "$HOME"/.config/rofi/applets/shared/theme.bash
 theme="$type/$style"
 
-rofi -theme ${theme} -dmenu "$@"
+rofi \
+  -theme ${theme} \
+  -matching fuzzy \
+  -sorting-method fzf \
+  -sort \
+  -dmenu \
+  "$@"

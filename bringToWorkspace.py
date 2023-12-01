@@ -117,14 +117,14 @@ selectedLabel = dmenu.show(
 if selectedLabel in ref:
     client = ref[selectedLabel]
     dispatch = "hyprctl dispatch"
-    pid = client["pid"]
-    window = f'pid:{pid}'
+    address = client["address"]
+    window = f'address:{address}'
     floating = client["floating"]
-    shouldFloat = os.path.isfile(f"{dir_path}/state/floating/{pid}")
+    shouldFloat = os.path.isfile(f"{dir_path}/state/floating/{address}")
     os.system(f'{dispatch} movetoworkspacesilent {activeWorkspaceId},{window}')
     os.system(f'{dispatch} focuswindow {window}')
     if temp:
-        os.system(f"touch {dir_path}/state/temp/{pid}")
+        os.system(f"touch {dir_path}/state/temp/{address}")
         if not floating:
             os.system(f'{dispatch} togglefloating {window}')
         os.system(f'{dispatch} resizewindowpixel exact 1000 384,{window}')

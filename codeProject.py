@@ -13,7 +13,7 @@ labels = []
 
 def addSubfolders(name, path):
     for sub in os.listdir(path):
-        label = f"{name} | {sub}"
+        label = f"{name}   ·   {sub}"
         fullPath = f"{path}/{sub}"
         refs[label] = fullPath
         labels.append(label)
@@ -24,8 +24,8 @@ addSubfolders("⚙️ configs", "/home/mitch/.config")
 
 ff_css_path = "/home/mitch/.mozilla/firefox/4hhe50hl.default-release/chrome"
 dz_bin_path = "/home/mitch/.local/bin"
-ff_css_label = f"🦊 firefox | user-chrome"
-dz_bin_label = f"📜 scripts | dz-bin"
+ff_css_label = f"🦊 firefox   ·   user-chrome"
+dz_bin_label = f"📜 scripts   ·   dz-bin"
 labels.append(ff_css_label)
 labels.append(dz_bin_label)
 refs[ff_css_label] = ff_css_path

@@ -1,0 +1,41 @@
+#!/bin/bash
+#
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+session_id=$1
+url=$2
+
+function ctl() {
+  echo "$dirname/firefoxctrl.py -s $session_id \"$@\""
+}
+
+function ctl_cmd() {
+  echo " [ $(ctl $@) ] "
+}
+
+km -m w title web \
+  - def stat_mod \
+    [ sub :2 :4 \
+      [ cmd up max $(ctl_cmd pokemon_calc_set_evs :1 :3 252) \
+      - cmd down min $(ctl_cmd pokemon_calc_set_evs :1 :3 252) \
+      ] \
+    ] \
+  - def pokemon_mod \
+    [ sub :1 [ pokemon :2 ] \
+      [ call mk_stat_mod [ :2 h hp hp ] \
+      [ call mk_stat_mod [ :2 a at atk ] \
+      [ call mk_stat_mod [ :2 d df def ] \
+      [ call mk_stat_mod [ :2 s sp speed ] \
+      [ call mk_stat_mod [ :2 s:A sa sp.atk ] \
+      [ call mk_stat_mod [ :2 s:D sd sp.def ] \
+      ] \
+    ] \
+  - cmd p "full window media" \
+    "hyprctl dispatch fakefullscreen && $(ctl fw)" \
+  - cmd s:P "full window media + detach" \
+    "hyprctl dispatch fakefullscreen && $(ctl composite fw \| tabdetach)" \
+  - sub c "pokemon damage calc" \
+    [ call pokemon_mod [ left 1 ] \
+    - col \
+    - call pokemon_mod [ right 2 ] \
+    ]

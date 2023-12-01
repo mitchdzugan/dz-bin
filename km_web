@@ -21,6 +21,7 @@ function mk_stat_mod() {
   echo sub $key $label \
     [ cmd up max $(ctl_cmd pokemon_calc_set_evs $player $class 252) \
     - cmd down min $(ctl_cmd pokemon_calc_set_evs $player $class 0) \
+    - cmd return [ manual entry ] $(ctl_cmd pokemon_calc_set_evs $player $class \$\(rofi-prompt\)) \
     ]
 }
 

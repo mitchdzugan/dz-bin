@@ -69,16 +69,16 @@ for client in clients:
     if address != activeAddress and clients_type == 0:
         continue
     dispatch = "hyprctl dispatch"
-    window = f'pid:{pid}'
-    wasTemp = os.path.isfile(f"{dir_path}/state/temp/{pid}")
-    os.system(f"rm {dir_path}/state/temp/{pid}")
+    window = f'address:{address}'
+    wasTemp = os.path.isfile(f"{dir_path}/state/temp/{address}")
+    os.system(f"rm {dir_path}/state/temp/{address}")
     if target_ws == "special":
         if floating:
             if not wasTemp:
-                os.system(f"touch {dir_path}/state/floating/{pid}")
+                os.system(f"touch {dir_path}/state/floating/{address}")
         else:
             if not wasTemp:
-                os.system(f"rm {dir_path}/state/floating/{pid}")
+                os.system(f"rm {dir_path}/state/floating/{address}")
             os.system(f'{dispatch} togglefloating {window}')
             os.system(f'{dispatch} resizewindowpixel exact 1000 384,{window}')
             os.system(f'{dispatch} movewindowpixel exact 460 12,{window}')
