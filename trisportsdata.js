@@ -53,10 +53,12 @@ const parseGameId = (gameId) => {
   }
 };
 
+
+const zPad = (n) => `${n < 10 ? '0' : ''}${n}`;
 const sportsData = {
   links: {
-    nba: (Y, M, D) => `https://www.espn.com/nba/scoreboard/_/date/${Y}${M}${D}`,
-    wnba: (Y, M, D) => `https://www.espn.com/wnba/scoreboard/_/date/${Y}${M}${D}`,
+    nba: (Y, M, D) => `https://www.espn.com/nba/scoreboard/_/date/${Y}${zPad(M)}${zPad(D)}`,
+    wnba: (Y, M, D) => `https://www.espn.com/wnba/scoreboard/_/date/${Y}${zPad(M)}${zPad(D)}`,
   },
   curr: { nba: {} },
   update: async () => {
@@ -71,7 +73,7 @@ const sportsData = {
           "section.Scoreboard"
         );
         for (const game of games) {
-          const data = {};
+          const data = { league: 'nba' };
           let state = 'unknown';
           if (!!game.querySelector('.ScoreboardScoreCell--pre')) {
             state = 'pre';
@@ -93,6 +95,14 @@ const sportsData = {
           for (const [key, team] of Array.from(teams).map((team, i) => [keys[i], team])) {
             data[key] = {};
             const logo = team.querySelector('img.Logo');
+            const recordEl = team.querySelector('.ScoreboardScoreCell__Record');
+            if (recordEl) {
+              data[key].record = recordEl.innerHTML;
+            }
+            const scoreEl = team.querySelector('.ScoreCell__Score');
+            if (scoreEl) {
+              data[key].score = parseInt(scoreEl.innerHTML, 10);
+            }
             const url = new URL(logo.src);
             data[key].team = path.basename(url.searchParams.get('img'), '.png');
           }

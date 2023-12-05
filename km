@@ -92,7 +92,7 @@ const unsugar_key = (key => {
   const used = {};
   for (const mod of mods) { used[mod] = true; }
   let modstr = "";
-  for (const mod of "wcas") { modstr += used[mod] ? mod : ""; }
+  for (const mod of "cwas") { modstr += used[mod] ? mod : ""; }
   return {
     key        : getIn(keyLookup    , keyname, modstr) || keyname,
     display_key: getIn(displayLookup, keyname, modstr),

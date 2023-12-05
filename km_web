@@ -40,12 +40,40 @@ function mk_pokemon_mod() {
 }
 
 km -m w title web \
+  - cmd m "toggle tab mute" "$(ctl mute toggle)" \
+  - cmd s:M "mute tab" "$(ctl mute)" \
   - cmd p "full window media" \
     "hyprctl dispatch fakefullscreen && $(ctl fw)" \
   - cmd s:P "full window media + detach" \
     "hyprctl dispatch fakefullscreen && $(ctl composite fw \| tabdetach)" \
   - sub c "pokemon damage calc" \
-    [ $(mk_pokemon_mod left 1) \
+    [ $(mk_pokemon_mod left left) \
     - col \
-    - $(mk_pokemon_mod right 2) \
+    - $(mk_stat_mod 1 h     hp "[ hp     left ]" ) \
+    - $(mk_stat_mod 1 a     at "[ atk    left ]" ) \
+    - $(mk_stat_mod 1 d     df "[ def    left ]" ) \
+    - $(mk_stat_mod 1 s     sp "[ speed  left ]" ) \
+    - $(mk_stat_mod 1 s:A   sa "[ sp.atk left ]" ) \
+    - $(mk_stat_mod 1 s:D   sd "[ sp.def left ]" ) \
+    - col \
+    - $(mk_stat_mod 2 c:h   hp "[ hp     right ]" ) \
+    - $(mk_stat_mod 2 ca:h  sa "[ min. hp right ]" ) \
+    - $(mk_stat_mod 2 cw:h  sa "[ max. hp right ]" ) \
+    - $(mk_stat_mod 2 c:a   at "[ atk    right ]" ) \
+    - $(mk_stat_mod 2 ca:a  sa "[ min. atk right ]" ) \
+    - $(mk_stat_mod 2 cw:a  sa "[ max. atk right ]" ) \
+    - $(mk_stat_mod 2 c:d   df "[ def    right ]" ) \
+    - $(mk_stat_mod 2 ca:d  sa "[ min. def right ]" ) \
+    - $(mk_stat_mod 2 cw:d  sa "[ max. def right ]" ) \
+    - $(mk_stat_mod 2 c:s   sp "[ speed  right ]" ) \
+    - $(mk_stat_mod 2 ca:s  sa "[ min. speed right ]" ) \
+    - $(mk_stat_mod 2 cw:s  sa "[ max. speed right ]" ) \
+    - $(mk_stat_mod 2 cs:A  sa "[ sp.atk right ]" ) \
+    - $(mk_stat_mod 2 cas:A sa "[ min. sp.atk right ]" ) \
+    - $(mk_stat_mod 2 cws:A sa "[ max. sp.atk right ]" ) \
+    - $(mk_stat_mod 2 cs:D  sd "[ sp.def right ]" ) \
+    - $(mk_stat_mod 2 cas:D sd "[ min. sp.def right ]" ) \
+    - $(mk_stat_mod 2 cws:D sd "[ max. sp.def right ]" ) \
+    - col \
+    - $(mk_pokemon_mod right right) \
     ] \
