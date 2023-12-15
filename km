@@ -201,7 +201,7 @@ const run = async (words, doInit, doFin, opts) => {
     connection: {},
     path: [],
     config: {
-      font: "Serious Sans Nerd Font Mono 12",
+      font: process.env.FONT_FAMILY,
       background: alpha(COLOR.bg, "77"),
       color: COLOR.white,
       color_key: COLOR.bright.magenta,

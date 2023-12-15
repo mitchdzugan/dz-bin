@@ -6,7 +6,11 @@ session_id=$1
 url=$2
 
 function ctl() {
-  echo "$dirname/firefoxctrl.py -s $session_id \"$@\""
+  if [ "$session_id" == "" ]; then
+    echo "$dirname/firefoxctrl.py \"$@\""
+  else
+    echo "$dirname/firefoxctrl.py -s $session_id \"$@\""
+  fi
 }
 
 function ctl_cmd() {
@@ -46,6 +50,9 @@ km -m w title web \
     "hyprctl dispatch fakefullscreen && $(ctl fw)" \
   - cmd s:P "full window media + detach" \
     "hyprctl dispatch fakefullscreen && $(ctl composite fw \| tabdetach)" \
+  - col \
+  - cmd n "nba stream in new tab" $(ctl_cmd tabopen \$\(openNbaStream.py\)) \
+  - cmd s:N "nba stream in new window" "firefox --new-window \$(openNbaStream.py)" \
   - sub c "pokemon damage calc" \
     [ $(mk_pokemon_mod left left) \
     - col \

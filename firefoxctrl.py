@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 import urllib.parse
-import urllib.request
+import requests
 
 appDesc = "bring hyprland client from other workspace to current"
 parser = ArgumentParser(description=appDesc)
@@ -68,7 +68,6 @@ if not iid:
             break
 
 p1 = "process" if isPid else "session"
-urlcmd = urllib.parse.quote(args.cmd)
-endpoint = f"http://localhost:9215/{p1}/{iid}/job/{urlcmd}"
-result = urllib.request.urlopen(endpoint).read()
-print(result)
+endpoint = f"http://localhost:9215/{p1}/{iid}/job"
+result = requests.post(endpoint, json = {'run': args.cmd})
+print(result.text)

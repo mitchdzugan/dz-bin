@@ -4,7 +4,9 @@ dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $dirname/util
 
 function sassToCss() {
-  sass --no-source-map $dirname/zwaybar.style.scss
+  cat ~/.local/bin/zwaybar.style.scss \
+    | sed "s/\$FONT_FAMILY/\"$FONT_FAMILY\"/g" \
+    | sass --no-source-map --stdin
 }
 
 function writeWithGenWarning() {
@@ -66,3 +68,5 @@ function buildConfigs() {
   path="~/.local/bin/zwaybar.styles.scss"
   writeWithGenWarning $name $path "/* " " */" sassToCss "$configDir/style.css"
 }
+
+sassToCss

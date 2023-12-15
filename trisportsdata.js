@@ -106,6 +106,10 @@ const sportsData = {
             const url = new URL(logo.src);
             data[key].team = path.basename(url.searchParams.get('img'), '.png');
           }
+          const timeEl = game.querySelector('.ScoreboardScoreCell__Time');
+          if (timeEl) {
+            data.time = timeEl.innerHTML;
+          }
           data.gameId = makeGameId('nba', Y, M, D, data.away.team, data.home.team);
           data.date = { Y, M, D };
           sportsData.curr['nba'][data.gameId] = data;

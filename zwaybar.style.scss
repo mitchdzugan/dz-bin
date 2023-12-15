@@ -46,7 +46,13 @@ $border: 1px solid rgba(0, 0, 0, 0.90);
 
 * {
   /* `otf-font-awesome` is required to be installed for icons */
-  font-family: "Serious Sans Nerd Font Mono";
+  /* font-family: "Serious Sans Nerd Font Mono"; */
+  // font-family: "MonaspiceRn Nerd Font Mono"; /* italic */
+  // font-family: "MonaspiceXe Nerd Font Mono"; /* serifs */
+  // font-family: "MonaspiceNe Nerd Font Mono"; /* pretty standard */
+  // font-family: "MonaspiceKr Nerd Font Mono"; /* blocky */
+  // font-family: "MonaspiceAr Nerd Font Mono"; /* slight serif kinda */
+  font-family: $FONT_FAMILY;
   font-size: 14px;
   font-weight: normal;
   min-height: 0;
