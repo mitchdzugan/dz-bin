@@ -7,6 +7,7 @@ import os
 import subprocess
 import sys
 import time
+import lib
 
 appDesc = "bring hyprland client from other workspace to current"
 parser = ArgumentParser(description=appDesc)
@@ -30,14 +31,9 @@ sep = " 󱤩 "
 sepL = sep
 sepR = sep
 
-blank = "󰂵"
+blank = " "
 sepL = blank * 2
 sepR = blank * 2
-
-def cmdJson(cmd):
-    argv = cmd.split(" ")
-    result = subprocess.run(argv, stdout=subprocess.PIPE)
-    return json.loads(result.stdout.decode())
 
 def strPad(s, atLeast):
     toPad = atLeast - len(s)
@@ -50,39 +46,34 @@ def strPad(s, atLeast):
     right = blank * padRight
     return f"{left}{s}{right}"
 
-monitors = cmdJson('hyprctl monitors -j')
+monitors = lib.cmdJson('hyprctl monitors -j')
 activeWorkspaceId = int(monitors[0]["activeWorkspace"]["id"])
 
 def isValidClient(client):
-    workspaceId = client["workspace"]["id"]
-    workspace = client["workspace"]["name"]
-    isSpecial = workspace == "special"
+    isSpecial = client["workspaceId"] == -99
+    workspaceId = int(client["workspaceId"])
     isActive = workspaceId == activeWorkspaceId
     isVisible = workspaceId > 0
     return ((isVisible and (not hidden_only)) or isSpecial) and (not isActive)
 
-def getClientData(client):
-    address = client["address"]
-    floating = client["floating"]
-    pid = client["pid"]
-    workspace = client["workspace"]["name"]
-    workspaceId = client["workspace"]["id"]
-    if workspace == "special":
-        workspace = ""
-    cclass = client["class"] or client["initialClass"]
-    title = client["title"] or client["initialTitle"] or cclass
-    return {
-        "address": address,
-        "pid": pid,
-        "workspace": workspace,
-        "workspaceId": workspaceId,
-        "floating": floating,
-        "class": cclass,
-        "title": title
-    }
+mruLookup = {}
+mruAddresses = lib \
+    .cmdsPipe(["ls", "-lt", f"{lib.statedir}/active"], ["awk", "{print $9}"]) \
+    .strip() \
+    .split("\n")
+for nth, address in enumerate(mruAddresses):
+    mruLookup[address] = float(nth + 1)
 
-clients = list(map(getClientData, filter(isValidClient, cmdJson('hyprctl clients -j'))))
-clients = sorted(clients, key=lambda client: client["workspaceId"])
+print(mruLookup)
+
+def getSortVal(client):
+    mruFactor = 0
+    if client["address"] in mruLookup:
+        mruFactor = 1.0 / mruLookup[client["address"]]
+    return float(client["workspaceId"]) - mruFactor
+
+clients = list(filter(isValidClient, lib.getClients()))
+clients = sorted(clients, key=getSortVal)
 maxLenClass = 0
 maxLenWorkspace = 0
 for client in clients:
@@ -93,7 +84,6 @@ for client in clients:
 
 labels = []
 ref = {}
-print([maxLenClass, maxLenWorkspace])
 for client in clients:
     cclass    = strPad(client["class"]    , maxLenClass    )
     workspace = strPad(client["workspace"], maxLenWorkspace)
@@ -104,8 +94,7 @@ for client in clients:
     ref[label] = client
 
 if len(labels) <= 0:
-    print("no clients on other workspaces")
-    sys.exit()
+    lib.exit("no clients on other workspaces")
 
 selectedLabel = dmenu.show(
     labels,
@@ -115,20 +104,8 @@ selectedLabel = dmenu.show(
 )
 
 if selectedLabel in ref:
-    client = ref[selectedLabel]
-    dispatch = "hyprctl dispatch"
-    address = client["address"]
-    window = f'address:{address}'
-    floating = client["floating"]
-    shouldFloat = os.path.isfile(f"{dir_path}/state/floating/{address}")
-    os.system(f'{dispatch} movetoworkspacesilent {activeWorkspaceId},{window}')
-    os.system(f'{dispatch} focuswindow {window}')
+    address = ref[selectedLabel]["address"]
     if temp:
-        os.system(f"touch {dir_path}/state/temp/{address}")
-        if not floating:
-            os.system(f'{dispatch} togglefloating {window}')
-        os.system(f'{dispatch} resizewindowpixel exact 1000 384,{window}')
-        os.system(f'{dispatch} movewindowpixel exact 460 12,{window}')
-    elif floating != shouldFloat:
-        time.sleep(0.1)
-        os.system(f'{dispatch} togglefloating {window}')
+        os.system(f"{dir_path}/toTempWindow.py -a {address}")
+    else:
+        lib.moveWindow(address, activeWorkspaceId)

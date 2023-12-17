@@ -1,34 +1,34 @@
 #!/usr/bin/python3
 
-from argparse import ArgumentParser
-import dmenu
-import json
 import os
-import subprocess
-import sys
-import time
+import lib
 
-dir_path = os.path.dirname(os.path.realpath(__file__))
+spec = lib.ArgsSpec()
+spec._(lib.add_address_arg)
+spec.curr.help = """
+wayland client address to lower. default focused
+"""
+args = spec.parse_args()
 
-def cmdJson(cmd):
-    argv = cmd.split(" ")
-    result = subprocess.run(argv, stdout=subprocess.PIPE)
-    return json.loads(result.stdout.decode())
+address = args.address
+client = lib.getClient(address)
+address = client["address"]
+floating = client["floating"]
+fullscreen = client["fullscreen"]
+fakeFullscreen = client["fakeFullscreen"]
+fullscreenMode = client["fullscreenMode"]
 
-window = cmdJson('hyprctl activewindow -j')
-address = window["address"]
-floating = window["floating"]
-fullscreen = window["fullscreen"]
-fullscreenMode = window["fullscreenMode"]
-
-target = f'address:{address}'
-
-if fullscreen:
+if fakeFullscreen and floating:
+    if (lib.isMaxFakeFullscreen(address)):
+        lib.restoreMaximizedFakeFullscreen(address)
+    else:
+        lib.hyprctl("togglefloating")
+elif fullscreen:
     if fullscreenMode == 0:
         os.system('hyprctl --batch "dispatch fullscreen ; dispatch fullscreen 1"')
     else:
-        os.system(f"hyprctl dispatch fullscreen")
+        lib.hyprctl("fullscreen")
 elif floating:
-    os.system(f"hyprctl dispatch togglefloating")
+    lib.hyprctl("togglefloating")
 else:
     print("lowest")
