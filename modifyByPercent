@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 function round() {
     printf "%.${2:-0}f" "$1"
@@ -26,5 +26,5 @@ function modifyByPercent() {
     $setNext $next
     eval "$postscript $next"
     newr=$(printf "%.*f\n" 0 "$($getCurr)")
-    tvolnoti-show $notiArgs $newr
+    volnoti-show $notiArgs $newr
 }
