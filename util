@@ -8,8 +8,8 @@ function volumeGetCurr() {
 }
 
 function volumeSetNext() {
-    echo "amixer -D pulse sset Master unmute $1%,$1%"
-    amixer -D pulse sset Master unmute $1%,$1%
+    echo "amixer sset Master unmute $1%,$1%"
+    amixer sset Master unmute $1%,$1%
 }
 
 function paVolumeChanged() {
@@ -21,13 +21,13 @@ function modifyVolume() {
 }
 
 function brightnessGetCurr() {
-    now=$(brightnessctl -d intel_backlight g)
-    max=$(brightnessctl -d intel_backlight m)
+    now=$(brightnessctl -d acpi_video0 g)
+    max=$(brightnessctl -d acpi_video0 m)
     echo "100 * $now / $max" | bc -l
 }
 
 function brightnessSetNext() {
-    brightnessctl -d intel_backlight s $1%
+    brightnessctl -d acpi_video0 s $1%
 }
 
 function modifyBrightness() {
