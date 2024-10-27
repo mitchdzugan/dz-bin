@@ -235,6 +235,7 @@ def getClientData(client):
         workspace = ""
     cclass = client["class"] or client["initialClass"]
     title = client["title"] or client["initialTitle"] or cclass
+    print(client)
     return {
         "address": address,
         "pid": pid,

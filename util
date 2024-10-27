@@ -13,7 +13,7 @@ function volumeSetNext() {
 }
 
 function paVolumeChanged() {
-    paplay $dirname/resources/shine.quiet.wav --volume=$(( $1 * 65536 / 100 )) &
+    paplay $dirname/resources/shine.wav &
 }
 
 function modifyVolume() {
@@ -27,6 +27,10 @@ function brightnessGetCurr() {
 }
 
 function brightnessSetNext() {
+    now=$(brightnessctl -d acpi_video0 g)
+    max=$(brightnessctl -d acpi_video0 m)
+    echo "100 * $now / $max" | bc -l
+    echo "BSETNEXT $@"
     brightnessctl -d acpi_video0 s $1%
 }
 
@@ -34,5 +38,5 @@ function modifyBrightness() {
     # svg="/usr/share/pixmaps/tvolnoti/display-brightness-dark.svg"
     svg="/home/mitch/.config/tvolnoti/themes/dark/display_brightness.svg"
     notiArgs="-s $svg"
-    modifyByPercent "brightnessGetCurr" "brightnessSetNext" "$notiArgs" ":" $@
+    modifyByPercent "brightnessGetCurr" "brightnessSetNext" "$notiArgs" ":" $1 8
 }

@@ -1,8 +1,11 @@
 #!/usr/bin/env bash
 
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $dirname/rofi-theme
 
-# Import Current Theme
-source "$HOME"/.config/rofi/applets/shared/theme.bash
-theme="$type/$style"
-
-rofi -theme ${theme} -show combi -combi-modes "drun,run" -modes combi -display-combi "Open Window"
+rofi \
+    -theme ${theme} \
+    -show combi \
+    -combi-modes "drun,run" \
+    -modes combi \
+    -display-combi "Open Window"

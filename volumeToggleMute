@@ -7,11 +7,20 @@ function isMuted() {
   echo $(( (2 - $(amixer get Master | tail -2 | grep -c '\[on\]')) / 2 ))
 }
 
-amixer -D pulse sset Master toggle
+amixer sset Master toggle
 if [[ $(isMuted) == 1 ]]; then
-  tvolnoti-show -m
+  curr=$(amixer get Master | grep -Po "[0-9]+(?=%)" | tail -1)
+  body=$(fullProgressBar "$curr" "󰖁 ")
+  notify-send \
+    "Volume" \
+    "$body" \
+    -h string:x-canonical-private-synchronous:vbnotify
 else
   curr=$(amixer get Master | grep -Po "[0-9]+(?=%)" | tail -1)
-  tvolnoti-show $curr
   paVolumeChanged
+  body=$(fullProgressBar "$curr" " ")
+  notify-send \
+    "Volume" \
+    "$body" \
+    -h string:x-canonical-private-synchronous:vbnotify
 fi

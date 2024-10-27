@@ -1,7 +1,44 @@
 #!/usr/bin/env bash
 
-function round() {
-    printf "%.${2:-0}f" "$1"
+progressWidth=18
+blocks=(" " "▏" "▎" "▍" "▌" "▋" "▊" "▉" "█")
+
+function progressBar() {
+    filled=$(bc -l <<< "$1 * $progressWidth / 100")
+    completed=$(bc -l <<< "scale = 0; $filled / 1")
+    fraction=$(bc -l <<< "$filled - $completed")
+    targetBlockInd=$(bc -l <<< "scale = 0; $fraction * 9 / 1")
+    bar=" "
+    for ((i=0;i<progressWidth;i++)); do
+        if [ $i -lt $completed ]; then
+            bar="$bar█"
+        elif [ $i -eq $completed ]; then
+            bar="$bar${blocks[$targetBlockInd]}"
+        else
+            bar="$bar "
+        fi
+    done
+    echo "$bar "
+}
+
+function fullProgressBar() {
+    newRaw=$1
+    icon=${2:-"  "}
+    newr=$(printf "%.*f\n" 0 "$newRaw")
+    newpad=""
+    if [ $newr -lt 10 ]; then
+        newpad="  "
+    elif [ $newr -lt 100 ]; then
+        newpad=" "
+    fi
+    borderTop="    ▁▁"
+    borderBottom="    ▔▔"
+    for ((i=1;i<=progressWidth;i++)); do
+        borderTop="$borderTop▁"
+        borderBottom="$borderBottom▔"
+    done
+    body="$icon $(progressBar $newr) $newr%$newpad "
+    echo "$borderTop\n$body\n$borderBottom"
 }
 
 function modifyByPercent() {
@@ -19,12 +56,32 @@ function modifyByPercent() {
         mod=1
     elif [[ $offset == 0 ]]; then
         mod=-1
+    elif [[ "$1" == "brightnessGetCurr" ]]; then
+        mod=-1
+        offset=0
     else
         mod=0
     fi
-    next=$(( (($curr / 5) + $mod) * 5 ))
+    next=$(( $curr + ( $mod * $step ) - $offset ))
+    if [ $next -lt 0 ]; then
+        next=0
+    elif [ $next -gt 100 ]; then
+        next=100
+    fi
+    echo "||| $curr $mod $step $next |||"
     $setNext $next
     eval "$postscript $next"
-    newr=$(printf "%.*f\n" 0 "$($getCurr)")
-    volnoti-show $notiArgs $newr
+    if [[ "$1" == "brightnessGetCurr" ]]; then
+        title="Brightness"
+        icon="󰃠 "
+    else
+        title="Volume"
+        icon=" "
+    fi
+    body=$(fullProgressBar "$($getCurr)" "$icon")
+    notify-send \
+        "$title" \
+        "$body" \
+        -t 800 \
+        -h string:x-canonical-private-synchronous:vbnotify
 }

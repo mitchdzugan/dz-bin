@@ -6,7 +6,7 @@ const http = require("http");
 const clc = require('cli-color');
 const fs = require("fs");
 
-const WHICH_KEY = '/home/mitch/Projects/wlr-which-key/target/debug/wlr-which-key';
+const WHICH_KEY = '/home/dz/Projects/wlr-which-key/target/debug/wlr-which-key';
 
 const FIN = 42;
 
@@ -407,6 +407,7 @@ const run = async (words, doInit, doFin, opts) => {
     }
     const proc = spawn(WHICH_KEY);
     proc.on('spawn', () => {
+      console.log(JSON.parse(config_str).menu.items[0])
       proc.stdin.write(config_str);
       proc.stdin.end();
     });
