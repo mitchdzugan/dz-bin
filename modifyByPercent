@@ -8,7 +8,7 @@ function progressBar() {
     completed=$(bc -l <<< "scale = 0; $filled / 1")
     fraction=$(bc -l <<< "$filled - $completed")
     targetBlockInd=$(bc -l <<< "scale = 0; $fraction * 9 / 1")
-    bar=" "
+    bar=""
     for ((i=0;i<progressWidth;i++)); do
         if [ $i -lt $completed ]; then
             bar="$bar█"
@@ -31,8 +31,8 @@ function fullProgressBar() {
     elif [ $newr -lt 100 ]; then
         newpad=" "
     fi
-    borderTop="    ▁▁"
-    borderBottom="    ▔▔"
+    borderTop="   ▁▁"
+    borderBottom="   ▔▔"
     for ((i=1;i<=progressWidth;i++)); do
         borderTop="$borderTop▁"
         borderBottom="$borderBottom▔"
