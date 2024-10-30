@@ -2,7 +2,7 @@
 
 dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
-declare -A mon_order=(["VGA-0"]="0:VGA-0" ["HDMI-0"]="1:HDMI-0")
+declare -A mon_order=(["eDP-1"]="0:eDP-1" ["VGA-0"]="1:VGA-0" ["HDMI-1"]="2:HDMI-1" ["HDMI-0"]="3:HDMI-0")
 
 function get_mons() {
 	bspc query -M --names | while read mon ; do echo ${mon_order[$mon]} ; done
