@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+function read_and_set() {
+	while read line; do bspwm-set-polybars.js; done
+}
+
+bspwm-set-polybars.js
+bspc subscribe | read_and_set
+

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+deviceId=$(xinput | grep Touchpad | perl -nle 'm/id=([\d]+)/; print $1')
+
+if [ $deviceId == "" ]; then
+	echo "no touchpad"
+	exit 1
+fi
+
+propId=$(\
+	xinput list-props $deviceId | \
+	grep Natural\ Scrolling\ Enabled\ \( | \
+	perl -nle 'm/\(([\d]+)/; print $1' \
+)
+
+if [ $propId == "" ]; then
+	echo "no natural scroll prop"
+	exit 1
+fi
+
+xinput set-prop $deviceId $propId 1
