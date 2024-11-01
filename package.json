@@ -7,6 +7,7 @@
     "chalk": "^5.3.0",
     "cli-color": "^2.0.3",
     "jsdom": "^23.0.0",
+    "keysym": "^0.0.6",
     "portfinder": "^1.0.32",
     "puppeteer": "^21.5.2",
     "yaml": "^2.3.4"

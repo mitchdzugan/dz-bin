@@ -603,6 +603,11 @@ jsonfile@^4.0.0:
   optionalDependencies:
     graceful-fs "^4.1.6"
 
+keysym@^0.0.6:
+  version "0.0.6"
+  resolved "https://registry.yarnpkg.com/keysym/-/keysym-0.0.6.tgz#a17bde3fd27ad22e19ab1bc6653396a6a7da6b87"
+  integrity sha512-3eRCY4N8H4GjocCRJ/WlbCJuoCuEPApkta8VIhuj9nTW50tcQyDCjz1gyzUjYSJqrPcKfh/NlUxxXYdGk4BK3g==
+
 lines-and-columns@^1.1.6:
   version "1.2.4"
   resolved "https://registry.yarnpkg.com/lines-and-columns/-/lines-and-columns-1.2.4.tgz#eca284f75d2965079309dc0ad9255abb2ebc1632"

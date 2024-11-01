@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+function action() {
+    jq -cn '{cmd: $ARGS.positional[0], args: $ARGS.positional[1:]}' --args "$@"
+}
+
+function noop() { action noop; }
+function title() { action title "$@"; }
+function col() { action col "$@"; }
+function cmd() { action cmd "$@"; }
+function use() { cat ${@:1}; }
+function sub() {
+    action sub_begin "$1" "$2"
+    cat ${@:3}
+    action sub_done
+}

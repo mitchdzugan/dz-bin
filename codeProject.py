@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 
 import dmenu
 import json
@@ -19,17 +19,17 @@ def addSubfolders(name, path):
         labels.append(label)
 
 # cs_label = f"  firefox | user-chrome"
-addSubfolders("🏗️ project", "/home/mitch/Projects")
-addSubfolders("⚙️ configs", "/home/mitch/.config")
+addSubfolders("🏗️ project", "/home/dz/Projects")
+addSubfolders("⚙️ configs", "/home/dz/.config")
 
-ff_css_path = "/home/mitch/.mozilla/firefox/4hhe50hl.default-release/chrome"
-dz_bin_path = "/home/mitch/.local/bin"
-ff_css_label = f"🦊 firefox   ·   user-chrome"
-dz_bin_label = f"📜 scripts   ·   dz-bin"
-labels.append(ff_css_label)
-labels.append(dz_bin_label)
-refs[ff_css_label] = ff_css_path
-refs[dz_bin_label] = dz_bin_path
+## ff_css_path = "/home/mitch/.mozilla/firefox/4hhe50hl.default-release/chrome"
+## dz_bin_path = "/home/mitch/.local/bin"
+## ff_css_label = f"🦊 firefox   ·   user-chrome"
+## dz_bin_label = f"📜 scripts   ·   dz-bin"
+## labels.append(ff_css_label)
+## labels.append(dz_bin_label)
+## refs[ff_css_label] = ff_css_path
+## refs[dz_bin_label] = dz_bin_path
 
 selectedLabel = dmenu.show(
     labels,
