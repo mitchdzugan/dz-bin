@@ -65,10 +65,7 @@ class CmdEntry extends Entry {
     }
 
     handle(kmApp) {
-        kmApp.foundExe = true;
-        kmApp.bashProc.kill();
-        kmApp.zkgProc.stdin.write('\n');
-        spawn('bash', ['-lc', this.exe], { detached: true });
+        kmApp.spawnAndClose(this.exe);
     }
 }
 
@@ -286,6 +283,13 @@ class KeyMenuApp {
                 this.queuedZkgEvents = [];
             },
         })[cmd])(...args);
+    }
+
+    spawnAndClose(exe) {
+        this.foundExe = true;
+        this.bashProc.kill();
+        this.zkgProc.stdin.write('\n');
+        spawn('bash', ['-lc', exe], { detached: true });
     }
 }
 

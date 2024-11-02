@@ -447,6 +447,11 @@ fs-extra@^8.1.0:
     jsonfile "^4.0.0"
     universalify "^0.1.0"
 
+fsevents@*:
+  version "2.3.3"
+  resolved "https://registry.yarnpkg.com/fsevents/-/fsevents-2.3.3.tgz#cac6407785d03675a2a5e1a5305c697b347d90d6"
+  integrity sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==
+
 get-caller-file@^2.0.5:
   version "2.0.5"
   resolved "https://registry.yarnpkg.com/get-caller-file/-/get-caller-file-2.0.5.tgz#4f94412a82db32f36e3b0b9741f8a97feb031f7e"
@@ -716,6 +721,13 @@ once@^1.3.1, once@^1.4.0:
   integrity sha512-lNaJgI+2Q5URQBkccEKHTQOPaXdUxnZZElQTZY0MFUAuaEqe1E+Nyvgdz/aIyNi6Z9MzO5dv1H8n58/GELp3+w==
   dependencies:
     wrappy "1"
+
+os-paths@^7.4.0:
+  version "7.4.0"
+  resolved "https://registry.yarnpkg.com/os-paths/-/os-paths-7.4.0.tgz#3354f1814425c232b6f42138a90e4000af6f9692"
+  integrity sha512-Ux1J4NUqC6tZayBqLN1kUlDAEvLiQlli/53sSddU4IN+h+3xxnv2HmRSMpVSvr1hvJzotfMs3ERvETGK+f4OwA==
+  optionalDependencies:
+    fsevents "*"
 
 pac-proxy-agent@^7.0.1:
   version "7.0.1"
@@ -1118,6 +1130,24 @@ ws@8.14.2, ws@^8.14.2:
   version "8.14.2"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.14.2.tgz#6c249a806eb2db7a20d26d51e7709eab7b2e6c7f"
   integrity sha512-wEBG1ftX4jcglPxgFCMJmZ2PLtSbJ2Peg6TmpJFTbe9GZYOQCDPdMYu/Tm0/bGZkw8paZnJY45J4K2PZrLYq8g==
+
+xdg-app-paths@^8.3.0:
+  version "8.3.0"
+  resolved "https://registry.yarnpkg.com/xdg-app-paths/-/xdg-app-paths-8.3.0.tgz#493dbbf6cdf430360a0b4ddabddd6da619b1dbbd"
+  integrity sha512-mgxlWVZw0TNWHoGmXq+NC3uhCIc55dDpAlDkMQUaIAcQzysb0kxctwv//fvuW61/nAAeUBJMQ8mnZjMmuYwOcQ==
+  dependencies:
+    xdg-portable "^10.6.0"
+  optionalDependencies:
+    fsevents "*"
+
+xdg-portable@^10.6.0:
+  version "10.6.0"
+  resolved "https://registry.yarnpkg.com/xdg-portable/-/xdg-portable-10.6.0.tgz#879ef439ace6a95ac5a49eea96c30f6a7819857c"
+  integrity sha512-xrcqhWDvtZ7WLmt8G4f3hHy37iK7D2idtosRgkeiSPZEPmBShp0VfmRBLWAPC6zLF48APJ21yfea+RfQMF4/Aw==
+  dependencies:
+    os-paths "^7.4.0"
+  optionalDependencies:
+    fsevents "*"
 
 xml-name-validator@^5.0.0:
   version "5.0.0"

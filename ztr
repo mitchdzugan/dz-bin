@@ -3,7 +3,8 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const readline = require('readline');
-const ks = require('keysym');
+const xdgAppPaths = require('xdg-app-paths/cjs');
+
 const keyOnSelf = (...args) => {
     const res = {};
     args.forEach((k) => { res[k] = k; });
@@ -38,7 +39,8 @@ const mkfifo = (name="") => new Promise((fin) => {
 });
 
 class ZtrApp {
-    constructor() {
+    constructor(configDir) {
+        this.configDir = configDir;
         this.nwjsProc = undefined;
         this.pid = process.pid;
         this.title = `ztr_widget_${this.pid}`;
@@ -49,7 +51,15 @@ class ZtrApp {
         this.fifoIn = await mkfifo("in");
         this.fifoOut = await mkfifo("out");
         this.nwjsArgs = [this.nwjsDir, this.title, this.fifoIn, this.fifoOut];
+        this.processNwjsOut();
         this.processStdIn();
+    }
+
+    async processNwjsOut() {
+        for await (const _ of fileLines(this.fifoOut)) {
+            const onResizeExe = `${this.configDir}/onResize`;
+            spawn(onResizeExe, [this.title], { detached: true });
+        }
     }
 
     async processStdIn() {
@@ -92,7 +102,8 @@ class ZtrApp {
 }
 
 const main = async() => {
-    const app = new ZtrApp();
+    const configDir = xdgAppPaths.config();
+    const app = new ZtrApp(configDir);
     app.init();
 };
 

@@ -30,3 +30,11 @@ body {
     display: flex;
     flex-direction: column-reverse;
 }
+
+.ai-center {
+    align-items: center;
+}
+
+.f1 {
+    flex: 1;
+}
