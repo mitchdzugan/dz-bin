@@ -1,0 +1,100 @@
+#!/usr/bin/env node
+
+const { spawn } = require('child_process');
+const fs = require('fs');
+const readline = require('readline');
+const ks = require('keysym');
+const keyOnSelf = (...args) => {
+    const res = {};
+    args.forEach((k) => { res[k] = k; });
+    return res;
+};
+
+const CMD = keyOnSelf('noop', 'render', 'done');
+
+const crlfDelay = Infinity;
+const streamLines = (input) => readline.createInterface({ input, crlfDelay });
+const fileLines = (file) => streamLines(fs.createReadStream(file));
+
+const parseActionLine = (line) => {
+    try {
+        return JSON.parse(line);
+    } catch (e) {
+        console.error(e);
+        return { cmd: CMD.noop };
+    }
+};
+
+const mkTmpName = (name) => {
+    const pid = process.pid;
+    const ts = (new Date()).getTime();
+    return `/tmp/${name}-${pid}-${ts}`;
+};
+
+const mkfifo = (name="") => new Promise((fin) => {
+    const fifo = mkTmpName(`ztr-${name}`);
+    const proc = spawn('mkfifo', [fifo]);
+    proc.on('exit', () => fin(fifo));
+});
+
+class ZtrApp {
+    constructor() {
+        this.nwjsProc = undefined;
+        this.pid = process.pid;
+        this.title = `ztr_widget_${this.pid}`;
+        this.nwjsDir = `${__dirname}/ztr_nwjs`;
+    }
+
+    async init() {
+        this.fifoIn = await mkfifo("in");
+        this.fifoOut = await mkfifo("out");
+        this.nwjsArgs = [this.nwjsDir, this.title, this.fifoIn, this.fifoOut];
+        this.processStdIn();
+    }
+
+    async processStdIn() {
+        for await (const line of streamLines(process.stdin)) {
+            const action = parseActionLine(line);
+            this.processAction(action);
+        }
+    }
+
+    ensureVisible() {
+        if (this.nwjsProc) { return }
+        this.nwjsProc = spawn("nw", this.nwjsArgs);
+    }
+
+    kill() {
+        if (!this.nwjsProc) { return; }
+        this.nwjsProc.kill();
+    }
+
+    writeToNwjs(content) {
+        fs.appendFile(this.fifoIn, content + "\n", () => {});
+    }
+
+    processAction({ cmd, args }) {
+        if (!CMD[cmd]) {
+            console.error(`Unknown command [${cmd}]`);
+            console.error('\t', cmd, ...args);
+            return;
+        }
+        (({
+            [CMD.noop]: () => {},
+            [CMD.done]: () => { this.kill(); },
+            [CMD.render]: (dom) => {
+                console.log(dom);
+                this.ensureVisible();
+                this.writeToNwjs(JSON.stringify(dom));
+            },
+        })[cmd])(...args);
+    }
+}
+
+const main = async() => {
+    const app = new ZtrApp();
+    app.init();
+};
+
+
+main();

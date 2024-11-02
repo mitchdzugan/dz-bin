@@ -1,0 +1,32 @@
+body {
+    font-family: monospace;
+    background: #191724aa;
+    color: #e0def4;
+    position: relative;
+}
+
+#app {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+}
+
+.hbox {
+    display: flex;
+    flex-direction: row;
+}
+
+.vbox {
+    display: flex;
+    flex-direction: column;
+}
+
+.hboxr {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.vboxr {
+    display: flex;
+    flex-direction: column-reverse;
+}
