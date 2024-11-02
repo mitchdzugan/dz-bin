@@ -1,0 +1,24 @@
+#!/usr/bin/env node
+
+const readline = require('readline');
+const rl = readline.createInterface({ 
+    input: process.stdin,
+    output: process.stdout
+});
+
+
+const timeout = (ms) => new Promise((done) => setTimeout(() => done(), ms));
+
+const clear = () => {
+    process.stdout.write('\x1Bc');
+    rl.write('\u001B[?25l');
+};
+
+const main = async() => {
+    const [fifoIn, fifoOut] = process.argv.slice(2);
+    clear();
+    await timeout(2000);
+    process.exit();
+};
+
+main();

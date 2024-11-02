@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+c(){ printf -- $(( ( ( $2 - $3 ) / 2 ) + $1 - $4)); }
+getm(){
+    printf '%d %d %d %d' $(
+    wattr xywh $(
+    xdo id -N Bspwm -n root -a "$(
+    bspc query -M -n $wid --names)"))
+}
+
+wid=$(printf "0X%X" ${1:-$(pfw)})
+bspc query -N -n "${wid}.floating" || exit
+
+b=$(bspc config border_width)
+s=( $(wattr wh $wid) )
+m=( $(getm $1) )
+
+x="$(c ${m[0]} ${m[2]} ${s[0]} $b)"
+y="$(c ${m[1]} ${m[3]} ${s[1]} $b)"
+
+wtp $x $y ${s[0]} ${s[1]} $wid

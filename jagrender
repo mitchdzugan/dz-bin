@@ -95,10 +95,8 @@ class Menu {
 
     get parent() { return this.kmApp.menus[this.parentMenuId]; }
 
-    get parentFullTitle() { return this.parent ? this.parent.fullTitle : []; }
-
     get fullTitle() {
-        return [...this.parentFullTitle, this.title];
+        return `${this.parent ? this.parent.title + ' > ' : ''}${this.title}`;
     }
 
     addEntry(entry) {
@@ -117,9 +115,6 @@ class KeyMenuApp {
 
     async run() {
         this.zkgProc = spawn('/home/dz/Projects/zkg/zkg');
-        this.zkgProc.on('close', () => {
-            if (!this.foundExe) { process.exit(1); }
-        });
         this.bashProc = spawn('bash');
         this.foundExe = false;
         this.isMenuBuildComplete = false;
@@ -192,7 +187,6 @@ class KeyMenuApp {
                 break;
             }
         }
-        this.render();
     }
 
     async processZkgOut() {
@@ -206,49 +200,7 @@ class KeyMenuApp {
     }
 
     async render() {
-        const titleBox = {
-            node: 'box',
-            options: { dir: 'h', margin: 'auto' },
-            children: [],
-        };
-        for (let i=0; i < this.activeMenu.fullTitle.length; i++) {
-            const isLast = i === (this.activeMenu.fullTitle.length - 1);
-            const piece = this.activeMenu.fullTitle[i];
-            titleBox.children.push({
-                node: 'text',
-                options: { bold: isLast, color: 'magenta' },
-                value: piece,
-            });
-            if (!isLast) {
-                titleBox.children.push({
-                    node: 'text',
-                    options: { color: 'grey' },
-                    value: ' > ',
-                });
-            }
-        }
-        const columnsBox = {
-            node: 'box',
-            options: { dir: 'h', use: 'equal' },
-            children: [],
-        };
-        let col;
-        const addCol = () => {
-            columnsBox.children.push({
-                node: 'box',
-                options: { dir: 'v', center: true },
-                children: [],
-            });
-            col = columnsBox.children[columnsBox.children.length - 1];
-        }
-        addCol();
-        
-        const menuBox = {
-            node: 'box',
-            options: { dir: 'v' },
-            children: [titleBox, columnsBox],
-        };
-        console.log(menuBox);
+        console.log(this.menus);
     }
 
     processAction({ cmd, args }) {
@@ -289,9 +241,38 @@ class KeyMenuApp {
     }
 }
 
+const mkTmpName = (name) => {
+    const pid = process.pid;
+    const ts = (new Date()).getTime();
+    return `/tmp/${name}-${pid}-${ts}`;
+};
+
+const mkfifo = (name="") => new Promise((fin) => {
+    const fifo = mkTmpName(`jagrender-${name}`);
+    const proc = spawn('mkfifo', [fifo]);
+    proc.on('exit', () => fin(fifo));
+});
+
 const main = async() => {
-    const app = new KeyMenuApp(process.argv.slice(2));
-    await app.run();
+    const fifoIn = await mkfifo("in");
+    const fifoOut = await mkfifo("out");
+    const kittySocket = "unix:" + mkTmpName('kittysocket');
+    const kittyProc = spawn("kitty", [
+        '--class=jagrender',
+        `--config=${__dirname}/jagrender_conf/kitty.conf`,
+        '--listen-on', kittySocket,
+        'jagrender_render_exe', fifoIn, fifoOut
+    ]);
 };
 
 main();
+
+/**
+kitty \
+    --class=jagrender \
+    --config=/home/dz/Projects/dz-bin/jagrender_conf/kitty.conf
+
+kitten @ resize-os-window --width=80 --height=16 --self
+
+nix-shell -p wmutils-core xdo
+ */
