@@ -46,6 +46,22 @@ const parseBashOutLine = (line) => {
     }
 };
 
+const cn = (...args) => {
+    classes = [];
+    for (const arg of args) {
+        if ((typeof arg) === 'string') {
+            classes.push(arg);
+        } else {
+            for (const className in arg) {
+                if (arg[className]) {
+                    classes.push(className);
+                }
+            }
+        }
+    }
+    return classes.join(".");
+};
+
 class Entry {
     constructor(keyspec, desc) {
         const specParts = keyspec.split(':');
@@ -56,7 +72,7 @@ class Entry {
         const { baseMods, finkey } = NAME_OVERRIDES[finspec] || {
             baseMods: {}, finkey: finspec
         };
-        for (const k in modspec) { baseMods[k] = true; }
+        for (const k of modspec) { baseMods[k] = true; }
         const modstring = (
             (baseMods.s ? 's' : '') +
             (baseMods.c ? 'c' : '') +
@@ -93,33 +109,21 @@ class CmdEntry extends Entry {
     handle(kmApp) {
         kmApp.spawnAndClose(this.exe);
     }
-}
 
-const cn = (...args) => {
-    classes = [];
-    for (const arg of args) {
-        if ((typeof arg) === 'string') {
-            classes.push(arg);
-        } else {
-            for (const className in arg) {
-                if (arg[className]) {
-                    classes.push(className);
-                }
-            }
-        }
-    }
-    return classes.join(".");
-};
+    get color() { return 'blue'; }
+}
 
 class SubEntry extends Entry {
     constructor(keyspec, desc, menuId) {
-        super(keyspec, desc);
+        super(keyspec, "+" + desc);
         this.menuId = menuId;
     }
 
     handle(kmApp) {
         kmApp.activeMenuId = this.menuId;
     }
+
+    get color() { return 'yellow'; }
 }
 
 class Menu {
@@ -165,7 +169,6 @@ class KeyMenuApp {
                 process.exit(1);
             }
         });
-        // this.ztrProc = spawn('ztr');
         this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
         this.bashProc = spawn('bash');
         this.foundExe = false;
@@ -219,10 +222,15 @@ class KeyMenuApp {
         if (this.foundExe) { return; }
         const [keysymVal, eventType, activeModifiers] = zkgLine.split(' ');
         const modval = parseInt(activeModifiers);
-        const hasShift = (modval & 1) > 0;
-        const hasCtrl = (modval & 4) > 0;
-        const hasAlt = (modval & 8) > 0;
-        const hasMeta = (modval & 64) > 0;
+        const isPress =  eventType === 'press';
+        const ksNames = ks.fromKeysym(keysymVal).names;
+        const isModPress = (mod) => (
+            isPress && ksNames.some((name) => name.startsWith(mod))
+        );
+        const hasShift = (modval & 1) > 0 || isModPress('Shift');
+        const hasCtrl = (modval & 4) > 0 || isModPress('Control');
+        const hasAlt = (modval & 8) > 0 || isModPress('Alt');
+        const hasMeta = (modval & 64) > 0 || isModPress('Super');
         this.modstring = (
             (hasShift ? 's' : '') +
             (hasCtrl ? 'c' : '') +
@@ -231,10 +239,9 @@ class KeyMenuApp {
         );
         this.modLookup = {};
         [...this.modstring].forEach((k) => { this.modLookup[k] = k; });
-        const keyspecs = ks.fromKeysym(keysymVal).names.map((name) => (
+        const keyspecs = ksNames.map((name) => (
             `${this.modstring}:${name.toLowerCase()}`
         ));
-        const isPress =  eventType === 'press';
         if (isPress) {
             for (const keyspec of keyspecs) {
                 const entry = this.activeMenu.binds[keyspec];
@@ -281,23 +288,32 @@ class KeyMenuApp {
         const colsDom = [];
         const { cols, entries } = this.activeMenu;
         let colIndex = 0;
+        const colEndInds = [0, ...cols];
         const nextColEndInd = () => (
-            cols[colIndex] || 0
+            colEndInds[colIndex] || 0
         );
         const currColDom = () => colsDom[colsDom.length - 1];
         entries.forEach((entry, ind) => {
             if (ind === nextColEndInd()) {
+                if (colIndex) { colsDom.push(['pre', '   ']); }
                 colsDom.push([
                     'div.hbox.f1',
                     ['div.vbox.ta-right'],
                     ['div.vbox.ta-left'],
                 ]);
+                colIndex++;
             }
             const isPossible = [...this.modstring].every((k) => (
                 entry.modLookup[k]
             ));
-            currColDom()[1].push(['pre', entry.keyspec]);
-            currColDom()[2].push(['pre', " ➜ " + entry.desc]);
+            const preKey = `pre.${cn({ dim: !isPossible }, 'cyan')}`;
+            const preDesc = `pre.${cn({ dim: !isPossible }, entry.color)}`;
+            const modsDom = [...entry.displayMods].map((modKey) => ([
+                `span.${cn({ bold: isPossible && this.modLookup[modKey] })}`,
+                modKey,
+            ]));
+            currColDom()[1].push([preKey, ...modsDom, ' ' + entry.displayKey]);
+            currColDom()[2].push([preDesc, ["span.grey", "  "], entry.desc]);
         });
         return colsDom;
     }
@@ -307,11 +323,11 @@ class KeyMenuApp {
         return [
             'div.vbox.ai-stretch',
             ['div.hbox.as-center.ai-center', ...this.titleDom],
-            ['hr.f1.m0.border-grey'],
+            ['hr.mh0.border-grey.dim'],
             ['div.hbox.as-center', ...this.columnsDom],
-            ['hr.m0.border-grey'],
+            ['hr.mh0.border-grey.dim'],
             [
-                'div.hbox.ai-start.f1.jc-space-between.smaller', 
+                'div.grey.hbox.ai-start.f1.jc-space-between.smaller', 
                 ['pre', 'ESC to quit'],
                 ...(isRoot ? [] : [
                     ['pre', '    '],
@@ -325,7 +341,6 @@ class KeyMenuApp {
         if (this.foundExe) { return; }
         const payload = {
             cmd: 'render',
-            // args: [this.appDom]
             args: [JSON.stringify(this.appDom)]
         };
         this.ztrProc.stdin.write(JSON.stringify(payload) + "\n");
