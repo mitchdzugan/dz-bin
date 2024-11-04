@@ -1,14 +1,34 @@
 body {
     font-family: monospace;
-    background: #191724aa;
-    color: #e0def4;
     position: relative;
+    --background: #191724;
+    --background-transparency: #191724dd;
+    --foreground: #e0def4;
+    --background-alt: #403d52;
+    --foreground-alt: #e0def4;
+    --black: #26233a;
+    --grey: #6e6a86;
+    --red: #eb6f92;
+    --green: #31748f;
+    --yellow: #f6c177;
+    --blue: #9ccfd8;
+    --magenta: #c4a7e7;
+    --cyan: #ebbcba;
+    background: var(--background-transparency);
+    color: var(--foreground);
+    white-space: nowrap;
+}
+
+pre {
+    margin: 0;
+    line-height: 1.25rem;
 }
 
 #app {
     position: fixed;
     top: 20px;
     left: 20px;
+    transition: opacity 0.25s ease-in-out;
 }
 
 .hbox {
@@ -31,10 +51,141 @@ body {
     flex-direction: column-reverse;
 }
 
+.jc-space-between {
+    justify-content: space-between;
+}
+
 .ai-center {
     align-items: center;
 }
 
+.ai-start {
+    align-items: start;
+}
+
+.ai-stretch {
+    align-items: stretch;
+}
+
+.as-center {
+    align-self: center;
+}
+
+.as-start {
+    align-self: start;
+}
+
+.as-stretch {
+    align-self: stretch;
+}
+
 .f1 {
     flex: 1;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+.black {
+    color: var(--black);
+}
+
+.grey {
+    color: var(--grey);
+}
+
+.red {
+    color: var(--red);
+}
+
+.green {
+    color: var(--green);
+}
+
+.yellow {
+    color: var(--yellow);
+}
+
+.blue {
+    color: var(--blue);
+}
+
+.magenta {
+    color: var(--magenta);
+}
+
+.cyan {
+    color: var(--cyan);
+}
+
+.border-black {
+    border-color: var(--black);
+}
+
+.border-grey {
+    border-color: var(--grey);
+}
+
+.border-red {
+    border-color: var(--red);
+}
+
+.border-green {
+    border-color: var(--green);
+}
+
+.border-yellow {
+    border-color: var(--yellow);
+}
+
+.border-blue {
+    border-color: var(--blue);
+}
+
+.border-magenta {
+    border-color: var(--magenta);
+}
+
+.border-cyan {
+    border-color: var(--cyan);
+}
+
+.dim {
+    opacity: 0.8;
+}
+
+.ta-left {
+    text-align: left;
+}
+
+.ta-center {
+    text-align: center;
+}
+
+.ta-right {
+    text-align: right;
+}
+
+.m0 {
+    margin: 0;
+}
+
+.mauto {
+    margin: auto;
+}
+
+.bigger {
+    font-size: 1rem;
+    line-height: 1.5rem;
+}
+
+.smaller {
+    font-size: 0.625rem;
+    line-height: 1rem;
+}
+
+.normal {
+    font-size: 0.75rem;
+    line-height: 1.25rem;
 }

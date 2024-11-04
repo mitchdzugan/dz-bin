@@ -1,1 +1,1 @@
-{"cmd": "render", "args": [["div.vbox", ["span.title", "Title"], "content"]]}
+{"cmd": "render", "args": ["[\"div.vbox\", [\"span.title\", \"Title\"], \"content\"]"]}

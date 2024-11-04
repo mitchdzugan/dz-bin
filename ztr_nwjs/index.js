@@ -18,14 +18,17 @@ const toElement = (dom) => {
     return el;
 }
 
+const fifoOutWriteStream = fs.createWriteStream(fifoOut);
+
 const main = async() => {
+    const app = document.getElementById("app");
     for await (const line of fileLines(fifoIn)) {
         const dom = JSON.parse(line);
         const el = toElement(dom);
-        document.getElementById("app").replaceChildren(el);
+        app.replaceChildren(el);
         const win = nw.Window.get();
         win.resizeTo(el.clientWidth + 40, el.clientHeight + 40);
-        fs.appendFile(fifoOut, "\n", () => {});
+        fifoOutWriteStream.write("\n");
     }
 };
 

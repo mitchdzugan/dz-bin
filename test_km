@@ -4,7 +4,7 @@ title "dz system"
 for i in {1..10}; do
     cmd $(( $i % 10 )) "go to workspace $i" "bspwm-focus-desktop.js $i"
 done
-sub m "music &amp; sound" <(
+sub m "music & sound" <(
     cmd left "previous song" prev.py
     cmd right "previous song" next.py
 )

@@ -47,8 +47,17 @@ class ZtrApp {
         this.nwjsDir = `${__dirname}/ztr_nwjs`;
     }
 
+    handleSigKill() {
+        this.kill();
+        process.exit(1);
+    }
+
     async init() {
+        process.on('SIGINT', () => this.handleSigKill());
+        process.on('SIGQUIT', () => this.handleSigKill());
+        process.on('SIGTERM', () => this.handleSigKill());
         this.fifoIn = await mkfifo("in");
+        this.fofoInStream = fs.createWriteStream(this.fifoIn);
         this.fifoOut = await mkfifo("out");
         this.nwjsArgs = [this.nwjsDir, this.title, this.fifoIn, this.fifoOut];
         this.processNwjsOut();
@@ -64,6 +73,7 @@ class ZtrApp {
 
     async processStdIn() {
         for await (const line of streamLines(process.stdin)) {
+            fs.appendFile(`${this.configDir}/log`, line + "\n", () => {});
             const action = parseActionLine(line);
             this.processAction(action);
         }
@@ -80,7 +90,7 @@ class ZtrApp {
     }
 
     writeToNwjs(content) {
-        fs.appendFile(this.fifoIn, content + "\n", () => {});
+        this.fofoInStream.write(content + "\n");
     }
 
     processAction({ cmd, args }) {

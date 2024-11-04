@@ -17,8 +17,17 @@ const MOD_SYM = {
     m: "❖",
 }
 
+const DISPLAY_NAMES = {
+    left: '⇦',
+    up: '⇧',
+    right: '⇨',
+    down: '⇩',
+    tab: "⭾",
+    return: "⏎"
+};
+
 const NAME_OVERRIDES = {
-}
+};
 
 const CMD = (
     keyOnSelf('noop', 'title', 'col', 'cmd', 'sub_begin', 'sub_done', 'done')
@@ -42,7 +51,8 @@ class Entry {
         const specParts = keyspec.split(':');
         const hasMod = specParts.length > 1;
         const modspec = hasMod ? specParts[0] : '';
-        const finspec = (hasMod ? specParts[1] : specParts[0]).toLowerCase();
+        const rawFinspec = hasMod ? specParts[1] : specParts[0];
+        const finspec = (rawFinspec).toLowerCase();
         const { baseMods, finkey } = NAME_OVERRIDES[finspec] || {
             baseMods: {}, finkey: finspec
         };
@@ -53,8 +63,24 @@ class Entry {
             (baseMods.a ? 'a' : '') +
             (baseMods.m ? 'm' : '')
         );
+        this.modLookup = {};
+        [...modstring].forEach((k) => { this.modLookup[k] = k; });
         this.keyspec = `${modstring}:${finkey}`;
         this.desc = desc;
+        this.displayMods = modspec;
+        this.displayKey = DISPLAY_NAMES[rawFinspec] || rawFinspec;
+    }
+}
+
+class BackEntry extends Entry {
+    constructor() {
+        super('backspace');
+    }
+
+    handle(kmApp) {
+        kmApp.activeMenuId = (
+            kmApp.activeMenu.parentMenuId || kmApp.activeMenuId
+        );
     }
 }
 
@@ -68,6 +94,22 @@ class CmdEntry extends Entry {
         kmApp.spawnAndClose(this.exe);
     }
 }
+
+const cn = (...args) => {
+    classes = [];
+    for (const arg of args) {
+        if ((typeof arg) === 'string') {
+            classes.push(arg);
+        } else {
+            for (const className in arg) {
+                if (arg[className]) {
+                    classes.push(className);
+                }
+            }
+        }
+    }
+    return classes.join(".");
+};
 
 class SubEntry extends Entry {
     constructor(keyspec, desc, menuId) {
@@ -88,6 +130,9 @@ class Menu {
         this.cols = [];
         this.entries = [];
         this.binds = {};
+        const backEntry = new BackEntry();
+        this.binds[backEntry.keyspec] = backEntry;
+
     }
 
     get parent() { return this.kmApp.menus[this.parentMenuId]; }
@@ -115,8 +160,13 @@ class KeyMenuApp {
     async run() {
         this.zkgProc = spawn('/home/dz/Projects/zkg/zkg');
         this.zkgProc.on('close', () => {
-            if (!this.foundExe) { process.exit(1); }
+            if (!this.foundExe) {
+                this.spawnAndClose();
+                process.exit(1);
+            }
         });
+        this.ztrProc = spawn('ztr');
+        // this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
         this.bashProc = spawn('bash');
         this.foundExe = false;
         this.isMenuBuildComplete = false;
@@ -126,6 +176,8 @@ class KeyMenuApp {
         this.rootMenuId = this.initNewMenu();
         this.buildingMenuId = this.rootMenuId;
         this.activeMenuId = this.rootMenuId;
+        this.modstring = "";
+        this.modLookup = {};
         this.processZkgOut();
         this.processBashErr();
         this.processBashOut();
@@ -177,6 +229,8 @@ class KeyMenuApp {
             (hasAlt ? 'a' : '') +
             (hasMeta ? 'm' : '')
         );
+        this.modLookup = {};
+        [...this.modstring].forEach((k) => { this.modLookup[k] = k; });
         const keyspecs = ks.fromKeysym(keysymVal).names.map((name) => (
             `${this.modstring}:${name.toLowerCase()}`
         ));
@@ -202,50 +256,79 @@ class KeyMenuApp {
         }
     }
 
-    async render() {
-        const titleBox = {
-            node: 'box',
-            options: { dir: 'h', margin: 'auto' },
-            children: [],
-        };
+    get titleDom() {
+        const pieces = [];
         for (let i=0; i < this.activeMenu.fullTitle.length; i++) {
             const isLast = i === (this.activeMenu.fullTitle.length - 1);
             const piece = this.activeMenu.fullTitle[i];
-            titleBox.children.push({
-                node: 'text',
-                options: { bold: isLast, color: 'magenta' },
-                value: piece,
-            });
+            pieces.push([
+                `pre.${cn({
+                    magenta: isLast,
+                    bold: isLast,
+                    bigger: isLast, 
+                    grey: !isLast,
+                })}`,
+                piece
+            ]);
             if (!isLast) {
-                titleBox.children.push({
-                    node: 'text',
-                    options: { color: 'grey' },
-                    value: ' > ',
-                });
+                pieces.push(['pre.grey', ' > ']);
             }
         }
-        const columnsBox = {
-            node: 'box',
-            options: { dir: 'h', use: 'equal' },
-            children: [],
+        return pieces;
+    }
+
+    get columnsDom() {
+        const colsDom = [];
+        const { cols, entries } = this.activeMenu;
+        let colIndex = 0;
+        const nextColEndInd = () => (
+            cols[colIndex] || 0
+        );
+        const currColDom = () => colsDom[colsDom.length - 1];
+        entries.forEach((entry, ind) => {
+            if (ind === nextColEndInd()) {
+                colsDom.push([
+                    'div.hbox.f1',
+                    ['div.vbox.ta-right'],
+                    ['div.vbox.ta-left'],
+                ]);
+            }
+            const isPossible = [...this.modstring].every((k) => (
+                entry.modLookup[k]
+            ));
+            currColDom()[1].push(['pre', entry.keyspec]);
+            currColDom()[2].push(['pre', " ➜ " + entry.desc]);
+        });
+        return colsDom;
+    }
+
+    get appDom() {
+        const isRoot = this.activeMenuId === this.rootMenuId;
+        return [
+            'div.vbox.ai-stretch',
+            ['div.hbox.as-center.ai-center', ...this.titleDom],
+            ['hr.f1.m0.border-grey'],
+            ['div.hbox.as-center', ...this.columnsDom],
+            ['hr.m0.border-grey'],
+            [
+                'div.hbox.ai-start.f1.jc-space-between.smaller', 
+                ['pre', 'ESC to quit'],
+                ...(isRoot ? [] : [
+                    ['pre', '    '],
+                    ['pre', '⌫ for prev menu']
+                ])
+            ]
+        ];
+    }
+
+    async render() {
+        if (this.foundExe) { return; }
+        const payload = {
+            cmd: 'render',
+            args: [this.appDom]
+            // args: [JSON.stringify(this.appDom)]
         };
-        let col;
-        const addCol = () => {
-            columnsBox.children.push({
-                node: 'box',
-                options: { dir: 'v', center: true },
-                children: [],
-            });
-            col = columnsBox.children[columnsBox.children.length - 1];
-        }
-        addCol();
-        
-        const menuBox = {
-            node: 'box',
-            options: { dir: 'v' },
-            children: [titleBox, columnsBox],
-        };
-        console.log(menuBox);
+        this.ztrProc.stdin.write(JSON.stringify(payload) + "\n");
     }
 
     processAction({ cmd, args }) {
@@ -288,8 +371,10 @@ class KeyMenuApp {
     spawnAndClose(exe) {
         this.foundExe = true;
         this.bashProc.kill();
+        this.ztrProc.kill();
         this.zkgProc.stdin.write('\n');
-        spawn('bash', ['-lc', exe], { detached: true });
+        const proc = exe && spawn('bash', ['-lc', exe], { stdio: 'inherit' });
+        proc && proc.on('close', (code) => process.exit(code));
     }
 }
 
