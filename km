@@ -23,7 +23,9 @@ const DISPLAY_NAMES = {
     right: '⇨',
     down: '⇩',
     tab: "⭾",
-    return: "⏎"
+    return: "⏎",
+    escape: "Esc",
+    backspace: "⌫",
 };
 
 const NAME_OVERRIDES = {
@@ -309,17 +311,31 @@ class KeyMenuApp {
             const preKey = `pre.${cn({ dim: !isPossible }, 'cyan')}`;
             const preDesc = `pre.${cn({ dim: !isPossible }, entry.color)}`;
             const modsDom = [...entry.displayMods].map((modKey) => ([
-                `span.${cn({ bold: isPossible && this.modLookup[modKey] })}`,
-                modKey,
+                `span.${cn('red', { bold: isPossible && this.modLookup[modKey] })}`,
+                MOD_SYM[modKey],
             ]));
-            currColDom()[1].push([preKey, ...modsDom, ' ' + entry.displayKey]);
+            currColDom()[1].push([preKey, ...modsDom, entry.displayKey]);
             currColDom()[2].push([preDesc, ["span.grey", "  "], entry.desc]);
         });
         return colsDom;
     }
 
+    get activeModsDom() {
+        const pad = '    ';
+        const mods = ['c', 's', 'm', 'a'];
+        const modsDom = mods.map((mod) => {
+            const isActive = this.modLookup[mod];
+            const classes = isActive ? 'bold' : 'dim';
+            return [`span.${classes}`, MOD_SYM[mod]]
+        });
+        return ['pre.ta-center.f1.red', pad, ...modsDom, pad];
+    }
+
     get appDom() {
         const isRoot = this.activeMenuId === this.rootMenuId;
+        const goBackDom = isRoot ? ['               '] : [
+            ['span.cyan.dim', '⌫'], ' for prev menu'
+        ];
         return [
             'div.vbox.ai-stretch',
             ['div.hbox.as-center.ai-center', ...this.titleDom],
@@ -327,12 +343,10 @@ class KeyMenuApp {
             ['div.hbox.as-center', ...this.columnsDom],
             ['hr.mh0.border-grey.dim'],
             [
-                'div.grey.hbox.ai-start.f1.jc-space-between.smaller', 
-                ['pre', 'ESC to quit'],
-                ...(isRoot ? [] : [
-                    ['pre', '    '],
-                    ['pre', '⌫ for prev menu']
-                ])
+                'div.grey.hbox.ai-start.f1.smaller', 
+                ['pre', ['span.cyan.dim', 'Esc'], ' to quit    '],
+                this.activeModsDom,
+                ['pre', ...goBackDom]
             ]
         ];
     }
