@@ -165,8 +165,8 @@ class KeyMenuApp {
                 process.exit(1);
             }
         });
-        this.ztrProc = spawn('ztr');
-        // this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
+        // this.ztrProc = spawn('ztr');
+        this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
         this.bashProc = spawn('bash');
         this.foundExe = false;
         this.isMenuBuildComplete = false;
@@ -325,8 +325,8 @@ class KeyMenuApp {
         if (this.foundExe) { return; }
         const payload = {
             cmd: 'render',
-            args: [this.appDom]
-            // args: [JSON.stringify(this.appDom)]
+            // args: [this.appDom]
+            args: [JSON.stringify(this.appDom)]
         };
         this.ztrProc.stdin.write(JSON.stringify(payload) + "\n");
     }
