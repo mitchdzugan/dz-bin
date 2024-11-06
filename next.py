@@ -8,4 +8,7 @@ client.timeout = 10
 client.idletimeout = None
 client.connect("localhost", 6600)
 client.next()
+status = client.status()
+if (status["state"] == "pause"):
+    client.pause()
 

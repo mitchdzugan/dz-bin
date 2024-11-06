@@ -1,7 +1,7 @@
 #!/bin/bash
 
 latest() {
-    find ~/Pictures -type f -exec ls -t1 {} + | head -1
+    find ~/Pictures/Screenshots -type f -exec ls -t1 {} + | head -1
 }
 
 echo $(latest)

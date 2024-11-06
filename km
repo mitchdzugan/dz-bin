@@ -3,12 +3,27 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const readline = require('readline');
+const { program } = require('commander');
 const ks = require('keysym');
+const xdg = require('@folder/xdg');
+const crypto = require('crypto');
+const path = require('path');
+const { mkdirp } = require('mkdirp');
+
+const xdgdirs = xdg({ subdir: 'km' });
+
+const hashStr = (s) => crypto.createHash('md5').update(s).digest('hex');
+
 const keyOnSelf = (...args) => {
     const res = {};
     args.forEach((k) => { res[k] = k; });
     return res;
 };
+
+program
+  .option('-c --cache-menu', 'save and reuse menus built from same file')
+  .option('-b --bust-cache', 'skip cache on load')
+  .parse();
 
 const MOD_SYM = {
     c: "⌃",
@@ -29,6 +44,9 @@ const DISPLAY_NAMES = {
 };
 
 const NAME_OVERRIDES = {
+    ".": { baseMods: {}, finkey: "period" },
+    ",": { baseMods: {}, finkey: "comma" },
+    "/": { baseMods: {}, finkey: "slash" },
 };
 
 const CMD = (
@@ -84,9 +102,21 @@ class Entry {
         this.modLookup = {};
         [...modstring].forEach((k) => { this.modLookup[k] = k; });
         this.keyspec = `${modstring}:${finkey}`;
+        this.givenKeyspec = keyspec;
         this.desc = desc;
         this.displayMods = modspec;
         this.displayKey = DISPLAY_NAMES[rawFinspec] || rawFinspec;
+    }
+
+    get extraProps() { return {}; }
+
+    get json() {
+        return {
+            entryType: this.entryType,
+            desc: this.desc,
+            keyspec: this.givenKeyspec,
+            ...this.extraProps,
+        };
     }
 }
 
@@ -94,6 +124,8 @@ class BackEntry extends Entry {
     constructor() {
         super('backspace');
     }
+
+    get entryType() { return `Back` }
 
     handle(kmApp) {
         kmApp.activeMenuId = (
@@ -108,6 +140,10 @@ class CmdEntry extends Entry {
         this.exe = exe;
     }
 
+    get entryType() { return `Cmd` }
+
+    get extraProps() { return { exe: this.exe }; }
+
     handle(kmApp) {
         kmApp.spawnAndClose(this.exe);
     }
@@ -120,6 +156,10 @@ class SubEntry extends Entry {
         super(keyspec, "+" + desc);
         this.menuId = menuId;
     }
+
+    get entryType() { return `Sub` }
+
+    get extraProps() { return { menuId: this.menuId, desc: this.desc.substr(1) }; }
 
     handle(kmApp) {
         kmApp.activeMenuId = this.menuId;
@@ -156,11 +196,20 @@ class Menu {
 
     addCmd(...args) { this.addEntry(new CmdEntry(...args)); }
     addSub(...args) { this.addEntry(new SubEntry(...args)); }
+
+    get json() {
+        return {
+            parentMenuId: this.parentMenuId,
+            cols: this.cols,
+            entries: this.entries.map((entry) => entry.json),
+        };
+    }
 }
 
 class KeyMenuApp {
-    constructor(kmFiles) {
+    constructor(kmFiles, opts) {
         this.kmFiles = kmFiles;
+        this.opts = opts;
     }
 
     async run() {
@@ -172,7 +221,6 @@ class KeyMenuApp {
             }
         });
         this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
-        this.bashProc = spawn('bash');
         this.foundExe = false;
         this.isMenuBuildComplete = false;
         this.queuedZkgEvents = [];
@@ -184,15 +232,15 @@ class KeyMenuApp {
         this.modstring = "";
         this.modLookup = {};
         this.processZkgOut();
-        this.processBashErr();
-        this.processBashOut();
-        this.bashProc.stdin.write(`. ${__dirname}/km_lib\n`);
-        for (const kmFile of this.kmFiles) {
-            for await (const line of fileLines(kmFile)) {
-                this.bashProc.stdin.write(line + '\n');
-            }
+        await this.buildMenu();
+        this.isMenuBuildComplete = true;
+        this.render();
+        for (const zkgLine of this.queuedZkgEvents) {
+            this.processZkgEvent(zkgLine);
         }
-        this.bashProc.stdin.write('jq -c -n \'{cmd:"done",args:[]}\'\n');
+        this.queuedZkgEvents = [];
+        const writeToCache = this.opts.cacheMenu || this.opts.bustCache;
+        if (writeToCache) { await this.writeToCache(); }
     }
 
     get buildingMenu() { return this.menus[this.buildingMenuId]; }
@@ -205,10 +253,83 @@ class KeyMenuApp {
         return id;
     }
 
-    async processBashOut() {
+    async writeToCache() {
+        const json = {
+            rootMenuId: this.rootMenuId,
+            menus: {},
+        };
+        for (const menuId in this.menus) {
+            json.menus[menuId] = this.menus[menuId].json;
+        }
+        const writeData = JSON.stringify(json) + "\n";
+        await mkdirp(path.dirname(this.cacheFilename));
+        await (new Promise((done) => (
+            fs.writeFile(this.cacheFilename, writeData, () => done())
+        )));
+    }
+
+    async buildMenu() {
+        const buildFromCache = this.opts.cacheMenu && !this.opts.bustCache;
+        if (buildFromCache) {
+            await this.buildMenuFromCache();
+        } else {
+            await this.buildMenuFromBash();
+        }
+    }
+
+    get cacheFilename() {
+        return this._cacheFilename ||= ((() => {
+            const filesId = JSON.stringify(this.kmFiles);
+            const filename = hashStr(filesId);
+            return path.join(xdgdirs.cache, 'menus', filename);
+        })());
+    }
+
+    async buildMenuFromCache() {
+        const contents = await (new Promise((done) => (
+            fs.readFile(this.cacheFilename, 'utf8', (e, d) => done(!e && d))
+        )));
+        if (!contents) {
+            await this.buildMenuFromBash();
+            return;
+        }
+        const json = JSON.parse(contents);
+        this.rootMenuId = json.rootMenuId;
+        for (const menuId in json.menus) {
+            const { parentMenuId, cols, entries } = json.menus[menuId];
+            const menu = new Menu(this, parentMenuId);
+            menu.cols = cols;
+            for (const { keyspec, desc, ...entrySpec } of entries) {
+                const entry = (({
+                    Back: () => new BackEntry(),
+                    Sub: () => new SubEntry(keyspec, desc, entrySpec.menuId),
+                    Cmd: () => new CmdEntry(keyspec, desc, entrySpec.exe),
+                })[entrySpec.entryType])();
+                menu.addEntry(entry);
+            }
+            this.menus[menuId] = menu;
+        }
+    }
+
+    buildMenuFromBash() {
+        return new Promise(async (completeSetup) => {
+            this.bashProc = spawn('bash');
+            this.processBashErr();
+            this.processBashOut(completeSetup);
+            this.bashProc.stdin.write(`. ${__dirname}/km_lib\n`);
+            for (const kmFile of this.kmFiles) {
+                for await (const line of fileLines(kmFile)) {
+                    this.bashProc.stdin.write(line + '\n');
+                }
+            }
+            this.bashProc.stdin.write('jq -c -n \'{cmd:"done",args:[]}\'\n');
+        });
+    }
+
+    async processBashOut(completeSetup) {
         for await (const line of streamLines(this.bashProc.stdout)) {
             const action = parseBashOutLine(line);
-            this.processAction(action);
+            this.processAction(completeSetup, action);
         }
     }
 
@@ -225,7 +346,7 @@ class KeyMenuApp {
         const [keysymVal, eventType, activeModifiers] = zkgLine.split(' ');
         const modval = parseInt(activeModifiers);
         const isPress =  eventType === 'press';
-        const ksNames = ks.fromKeysym(keysymVal).names;
+        const ksNames = (ks.fromKeysym(keysymVal) || { names: []}).names;
         const isModPress = (mod) => (
             isPress && ksNames.some((name) => name.startsWith(mod))
         );
@@ -274,7 +395,7 @@ class KeyMenuApp {
                 `pre.${cn({
                     magenta: isLast,
                     bold: isLast,
-                    bigger: isLast, 
+                    bigger: isLast,
                     grey: !isLast,
                 })}`,
                 piece
@@ -343,7 +464,7 @@ class KeyMenuApp {
             ['div.hbox.as-center', ...this.columnsDom],
             ['hr.mh0.border-grey.dim'],
             [
-                'div.grey.hbox.ai-start.f1.smaller', 
+                'div.grey.hbox.ai-start.f1.smaller',
                 ['pre', ['span.cyan.dim', 'Esc'], ' to quit    '],
                 this.activeModsDom,
                 ['pre', ...goBackDom]
@@ -360,7 +481,7 @@ class KeyMenuApp {
         this.ztrProc.stdin.write(JSON.stringify(payload) + "\n");
     }
 
-    processAction({ cmd, args }) {
+    processAction(completeSetup, { cmd, args }) {
         if (!CMD[cmd]) {
             console.error(`Unknown command [${cmd}]`);
             console.error('\t', cmd, ...args);
@@ -386,20 +507,15 @@ class KeyMenuApp {
             [CMD.sub_done]: () => {
                 this.buildingMenuId = this.buildingMenu.parentMenuId;
             },
-            [CMD.done]: () => {
-                this.isMenuBuildComplete = true;
-                this.render();
-                for (const zkgLine of this.queuedZkgEvents) {
-                    this.processZkgEvent(zkgLine);
-                }
-                this.queuedZkgEvents = [];
+            [CMD.done]: () => { 
+                this.bashProc.kill();
+                completeSetup();
             },
         })[cmd])(...args);
     }
 
     spawnAndClose(exe) {
         this.foundExe = true;
-        this.bashProc.kill();
         this.ztrProc.kill();
         this.zkgProc.stdin.write('\n');
         const proc = exe && spawn('bash', ['-lc', exe], { stdio: 'inherit' });
@@ -408,7 +524,7 @@ class KeyMenuApp {
 }
 
 const main = async() => {
-    const app = new KeyMenuApp(process.argv.slice(2));
+    const app = new KeyMenuApp(program.args, program.opts());
     await app.run();
 };
 
