@@ -20,7 +20,8 @@ def addSubfolders(name, path):
 
 # cs_label = f"  firefox | user-chrome"
 addSubfolders("🏗️ project", "/home/dz/Projects")
-addSubfolders("⚙️ configs", "/home/dz/.config")
+# addSubfolders("⚙️ configs", "/home/dz/.config")
+addSubfolders("  rplugins", "/home/dz/.config/nvim/after/rplugin/node")
 
 ## ff_css_path = "/home/mitch/.mozilla/firefox/4hhe50hl.default-release/chrome"
 ## dz_bin_path = "/home/mitch/.local/bin"

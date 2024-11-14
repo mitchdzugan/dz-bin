@@ -42,7 +42,7 @@ function kittyLaunch() {
 }
 
 function guiLaunch() {
-  pushd $1 && neovide ./ && popd
+  pushd $1 && glrnvim ./ && popd
 }
 
 case $mode in

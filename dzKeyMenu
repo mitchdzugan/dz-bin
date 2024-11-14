@@ -6,7 +6,7 @@ for i in {1..10}; do
 done
 col
 for i in {1..10}; do
-    cmd s:$(( $i % 10 )) "move window to workspace $i" "bspwm-move-to-desktop.js $i"
+    cmd s:$(( $i % 10 )) "move window to workspace $i" "bspwm-move-to-desktop.js -d $i"
 done
 col
 sub m "music & sound" <(
@@ -24,3 +24,4 @@ sub m "music & sound" <(
 )
 cmd v "open nvim project in kitty" "nvimProject -m k"
 cmd s:V "open nvim project in preferred GUI" "nvimProject -m g"
+cmd "t" "open today's TODO list" "glrnvim -c TodoOpenToday"

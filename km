@@ -200,6 +200,7 @@ class Menu {
     get json() {
         return {
             parentMenuId: this.parentMenuId,
+            title: this.title,
             cols: this.cols,
             entries: this.entries.map((entry) => entry.json),
         };
@@ -296,9 +297,10 @@ class KeyMenuApp {
         const json = JSON.parse(contents);
         this.rootMenuId = json.rootMenuId;
         for (const menuId in json.menus) {
-            const { parentMenuId, cols, entries } = json.menus[menuId];
+            const { parentMenuId, title, cols, entries } = json.menus[menuId];
             const menu = new Menu(this, parentMenuId);
             menu.cols = cols;
+            menu.title = title;
             for (const { keyspec, desc, ...entrySpec } of entries) {
                 const entry = (({
                     Back: () => new BackEntry(),
@@ -507,7 +509,7 @@ class KeyMenuApp {
             [CMD.sub_done]: () => {
                 this.buildingMenuId = this.buildingMenu.parentMenuId;
             },
-            [CMD.done]: () => { 
+            [CMD.done]: () => {
                 this.bashProc.kill();
                 completeSetup();
             },
