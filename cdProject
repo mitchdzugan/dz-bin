@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-
-path=$( $dirname/codeProject.py )
-if [ "$path" != "" ]; then
-  cd $path
-fi
