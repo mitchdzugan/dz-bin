@@ -207,6 +207,10 @@ class Menu {
     }
 }
 
+const zkgBin = process.env.XDG_SESSION_TYPE === 'wayland' ?
+    '/home/dz/Projects/zkg-wlr/target/release/zkg-wlr' :
+    '/home/dz/Projects/zkg/zkg';
+
 class KeyMenuApp {
     constructor(kmFiles, opts) {
         this.kmFiles = kmFiles;
@@ -214,7 +218,7 @@ class KeyMenuApp {
     }
 
     async run() {
-        this.zkgProc = spawn('/home/dz/Projects/zkg/zkg');
+        this.zkgProc = spawn(zkgBin);
         this.zkgProc.on('close', () => {
             if (!this.foundExe) {
                 this.spawnAndClose();
@@ -348,14 +352,13 @@ class KeyMenuApp {
         const [keysymVal, eventType, activeModifiers] = zkgLine.split(' ');
         const modval = parseInt(activeModifiers);
         const isPress =  eventType === 'press';
+        const pressVal = isPress ? 1 : 0;
         const ksNames = (ks.fromKeysym(keysymVal) || { names: []}).names;
-        const isModPress = (mod) => (
-            isPress && ksNames.some((name) => name.startsWith(mod))
-        );
-        const hasShift = (modval & 1) > 0 || isModPress('Shift');
-        const hasCtrl = (modval & 4) > 0 || isModPress('Control');
-        const hasAlt = (modval & 8) > 0 || isModPress('Alt');
-        const hasMeta = (modval & 64) > 0 || isModPress('Super');
+        const isMod = (mod) => ksNames.some((name) => name.startsWith(mod));
+        const hasShift = isMod('Shift')   ? pressVal : (modval & 1 ) > 0;
+        const hasCtrl  = isMod('Control') ? pressVal : (modval & 4 ) > 0;
+        const hasAlt   = isMod('Alt')     ? pressVal : (modval & 8 ) > 0;
+        const hasMeta  = isMod('Super')   ? pressVal : (modval & 64) > 0;
         this.modstring = (
             (hasShift ? 's' : '') +
             (hasCtrl ? 'c' : '') +
