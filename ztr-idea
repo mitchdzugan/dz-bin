@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+export fifo="/tmp/ztr_idea_launcher_$$"
+mkfifo $fifo
+
+function do_launch () {
+  cd /home/dz/Projects/ztr-clj
+  echo "hi..."
+  nix-shell --run "bash -c \"(echo > $fifo &) && idea-community ./\""
+}
+
+echo "entering nix shell"
+
+do_launch >/dev/null 2>&1 &
+nixshellpid=$!
+read line < $fifo
+echo "starting idea"
+disown $nixshellpid
+rm $fifo
