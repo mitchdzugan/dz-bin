@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+dirname=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+url=$($dirname/openNbaStream.py)
+status="$?"
+if [ "$status" = "0" ]; then
+  firefox -P streaming --new-window "$url"
+else
+  exit 1
+fi

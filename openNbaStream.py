@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import sys
 import dmenu
 import os
 import requests
@@ -45,18 +46,21 @@ if gameLabel in ref:
     for row in streamlinkrows:
         rank += 1
         link = row.find("a")
-        rep = row.select_one(".text-center span.label")
-        repText = ""
+        sname = row.select_one("td.streamer-name")
+        rep = row.select_one("td span.badge:not(.badge-channel)")
+        repText = ""
         if rep:
             for c in rep.attrs["class"]:
-                if c == 'label-platinum':
-                    repText = ""
-                if c == 'label-gold-standard':
-                    repText = ""
-                if c == 'label-silver':
-                    repText = ""
+                if c == 'badge-diamond':
+                    repText = ""
+                if c == 'badge-platinum':
+                    repText = ""
+                if c == 'badge-gold':
+                    repText = ""
+                if c == 'badge-silver':
+                    repText = ""
         href = link.attrs["href"]
-        label = f"{rank}. {link.text} - {repText}"
+        label = f"{rank}. {sname.text} - {repText}"
         link = {}
         link["href"] = href
         link["label"] = label
@@ -71,3 +75,5 @@ if gameLabel in ref:
     if linkLabel in ref:
         link = ref[linkLabel]
         print(link["href"])
+        sys.exit(0)
+sys.exit(1)

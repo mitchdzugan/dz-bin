@@ -1,0 +1,39 @@
+#!/usr/bin/env zkm
+
+(Title "dz system")
+
+(Sub :x "x11 window management"
+  (doseq [i (range 1 11)]
+    (Cmd (mod i 10)
+         ["go to workspace" i]
+         ["bspwm-focus-desktop.js" i]))
+  (Col)
+  (doseq [i (range 1 11)]
+    (Cmd ["s" (mod i 10)]
+         ["move window to workspace" i]
+         ["bspwm-move-to-desktop.js" i])))
+(Sub :s "sound & music"
+  (Cmd :left "previous song" "prev.py")
+  (Cmd :right "next song" "next.py")
+  (Cmd :p "toggle pause" "pause.py")
+  (Cmd "." "set [nowplaying] playlist" "setPlaylist.py")
+  (Cmd "," "add playlist to [nowplaying]" "addPlaylist.py")
+  (Cmd "/" "jump to song in [nowplaying]" "findInQueue.py")
+  (Cmd :s "shuffle [nowplaying]" "shuffle.py")
+  (Col)
+  (Cmd :up "volume up [5%]" "volumeUp")
+  (Cmd :down "volume down [5%]" "volumeDown")
+  (Cmd :m "toggle mute" "volumeToggleMute"))
+(Col)
+(Cmd :m "play melee (default iso)" "echo xD")
+(Cmd :a:m "play melee (select iso)" "echo Xd")
+(Cmd :c:m "play melee (unclepunch)" "exho xd")
+(Cmd :s:M "slippi launcher" "exho XD")
+(Cmd :g "open steam" "echo steam")
+(Cmd :p "play pseudoregalia" "echo steam")
+(Cmd :r "play rivals2" "echo steam")
+(Col)
+(Cmd :v "open nvim project" "nvimProject -m g")
+(Cmd :t "open today's TODO list" "glrnvim -c TodoOpenToday")
+(Cmd :w "open web browser" "firefox")
+(Cmd :n "open nba stream" "openNbaStream")
