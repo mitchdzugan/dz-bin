@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+
+read replacer
+status="$?"
+
+if [ "$status" != "0" ]; then exit $status; fi
+
+in_cmd="$@"
+to_exec="${in_cmd/"~%"/$replacer}"
+
+eval $to_exec

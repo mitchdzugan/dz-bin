@@ -2,6 +2,26 @@
 
 (Title "dz system")
 
+(defn melee
+  ([] (melee "ssbm.1_02.iso"))
+  ([iso-name] ["gamemoderun"
+               "slippi-netplay"
+               "-b"
+               "-e"
+               (str "/home/dz/ssbm/iso/" iso-name)]))
+(def uncle-punch "Training\\ Mode\\ v3.0\\ Alpha\\ 7.2.iso")
+(def pick-melee
+  (->> (concat ["ls /home/dz/ssbm/iso | rofi-dmenu | pipe-exec"] (melee "~%"))
+       (into [])))
+
+(defn my-join [sep things]
+  (case (count things) 0 "" 1 (str (first things))
+    (loop [acc "" [t1 & trest] things]
+      (if (empty? trest) (str acc sep t1) (recur (str acc sep t1) trest)))))
+
+(def game-ids {:pseudoregalia 2365810 :rivals2 3241370})
+(defn steam-game [g] ["steam" (str "stream://rungameid/" (get game-ids g))])
+
 (Sub :x "x11 window management"
   (doseq [i (range 1 11)]
     (Cmd (mod i 10)
@@ -25,13 +45,13 @@
   (Cmd :down "volume down [5%]" "volumeDown")
   (Cmd :m "toggle mute" "volumeToggleMute"))
 (Col)
-(Cmd :m "play melee (default iso)" "echo xD")
-(Cmd :a:m "play melee (select iso)" "echo Xd")
-(Cmd :c:m "play melee (unclepunch)" "exho xd")
-(Cmd :s:M "slippi launcher" "exho XD")
-(Cmd :g "open steam" "echo steam")
-(Cmd :p "play pseudoregalia" "echo steam")
-(Cmd :r "play rivals2" "echo steam")
+(Cmd :m "play melee (default iso)" (melee))
+(Cmd :a:m "play melee (select iso)" (my-join " " pick-melee))
+(Cmd :c:m "play melee (unclepunch)" (melee uncle-punch))
+(Cmd :s:M "slippi launcher" "slippi-launcher")
+(Cmd :g "open steam" "steam")
+(Cmd :p "play pseudoregalia" (steam-game :pseudoregalia))
+(Cmd :r "play rivals2" (steam-game :rivals2))
 (Col)
 (Cmd :v "open nvim project" "nvimProject -m g")
 (Cmd :t "open today's TODO list" "glrnvim -c TodoOpenToday")

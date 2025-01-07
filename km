@@ -225,7 +225,7 @@ class KeyMenuApp {
                 process.exit(1);
             }
         });
-        this.ztrProc = spawn('/home/dz/Projects/ztr/src-tauri/target/release/ztr');
+        this.ztrProc = spawn('/home/dz/Projects/ztr-bkups/ztr/src-tauri/target/release/ztr');
         this.foundExe = false;
         this.isMenuBuildComplete = false;
         this.queuedZkgEvents = [];
