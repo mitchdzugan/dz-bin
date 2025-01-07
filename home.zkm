@@ -14,15 +14,29 @@
   (->> (concat ["ls /home/dz/ssbm/iso | rofi-dmenu | pipe-exec"] (melee "~%"))
        (into [])))
 
-(defn my-join [sep things]
-  (case (count things) 0 "" 1 (str (first things))
-    (loop [acc "" [t1 & trest] things]
-      (if (empty? trest) (str acc sep t1) (recur (str acc sep t1) trest)))))
-
 (def game-ids {:pseudoregalia 2365810 :rivals2 3241370})
 (defn steam-game [g] ["steam" (str "stream://rungameid/" (get game-ids g))])
 
-(Sub :x "x11 window management"
+(defn with-kitty
+  ([shcmd] (with-kitty false shcmd))
+  ([float? shcmd] (into [] (concat ["kitty"]
+                                   (if float? ["--class" "float_kitty"] [])
+                                   ["sh" "-c" (str "'" shcmd "'")]))))
+
+(def set-config "sudo /home/dz/Projects/dz-nixos/setConfig.sh")
+(defn nixos-rebuild [switch?]
+  (str "sudo nixos-rebuild " (if switch? "switch" "boot")))
+(defn rebuild-shcmd [switch?]
+  (str set-config " && " (nixos-rebuild switch?)))
+
+(def clm-slp-cmd "cd /home/dz/Projects/slippi-clm.github.io && ./UPDATE_LOOPER.sh")
+
+(Sub :n "nix system"
+  (Cmd :s "rebuild switch" (with-kitty true (rebuild-shcmd true)))
+  (Cmd :b "rebuild boot" (with-kitty true (rebuild-shcmd false)))
+  (Col)
+  (Cmd :c "clm slippi updater" (with-kitty false clm-slp-cmd)))
+(Sub :x "x11 windows"
   (doseq [i (range 1 11)]
     (Cmd (mod i 10)
          ["go to workspace" i]
@@ -45,15 +59,16 @@
   (Cmd :down "volume down [5%]" "volumeDown")
   (Cmd :m "toggle mute" "volumeToggleMute"))
 (Col)
-(Cmd :m "play melee (default iso)" (melee))
-(Cmd :a:m "play melee (select iso)" (my-join " " pick-melee))
-(Cmd :c:m "play melee (unclepunch)" (melee uncle-punch))
-(Cmd :s:M "slippi launcher" "slippi-launcher")
-(Cmd :g "open steam" "steam")
-(Cmd :p "play pseudoregalia" (steam-game :pseudoregalia))
-(Cmd :r "play rivals2" (steam-game :rivals2))
-(Col)
+(Cmd :return "open terminal" "kitty")
 (Cmd :v "open nvim project" "nvimProject -m g")
 (Cmd :t "open today's TODO list" "glrnvim -c TodoOpenToday")
 (Cmd :w "open web browser" "firefox")
-(Cmd :n "open nba stream" "openNbaStream")
+(Cmd :b "open basketball stream" "openNbaStream")
+(Col)
+(Cmd :m "play melee (default iso)" (melee))
+(Cmd :a:m "play melee (select iso)" pick-melee)
+(Cmd :c:m "play melee (unclepunch)" (melee uncle-punch))
+(Cmd :s:M "open slippi launcher" "slippi-launcher")
+(Cmd :g "open steam" "steam")
+(Cmd :p "play pseudoregalia" (steam-game :pseudoregalia))
+(Cmd :r "play rivals2" (steam-game :rivals2))

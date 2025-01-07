@@ -5,6 +5,7 @@ status="$?"
 
 if [ "$status" != "0" ]; then exit $status; fi
 
+replacer="'$replacer'"
 in_cmd="$@"
 to_exec="${in_cmd/"~%"/$replacer}"
 
